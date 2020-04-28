@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\ManagerXlsFile;
 use Illuminate\Http\Request;
 use App\Docente;
 use App\Seccion;
@@ -117,54 +118,83 @@ class SaceUserController extends Controller
     }
 
     public function sicronizar( Request $request){
+
+        //se busca el
         $docente=Docente::find($request->id);
 
-        if(!is_null($docente) or sizeof($docente) != 0){
 
-              
+        if(!is_null($docente) or is_object($docente)){
+
+
                 $resultado=TRUE;
                 $cookie_file_path = storage_path('app/public/cookies/'.$docente->user_sace.'.txt');
 
-                //echo $cookie_file_path;
+                //se crea la instacia para interactuar con el SACE
                 $sace=new SaceController();
 
+
+                //se llenan los datos del doncente
                 $sace->set_data_user($docente->user_sace,Crypt::decryptString($docente->password_sace),$cookie_file_path);
-                $sace->login_sace();
-                $sace->delete_file();
-                $resultado=$sace->get_descargar();
-                $sace->logout();
-                $sace->setDataInDB();
 
-                if($resultado){
-                    $secciones=Seccion::join("asignaturas_secciones","seccions.id","=","asignaturas_secciones.seccion_id")
-                        ->select("seccions.id","seccions.modalidad_id","seccions.curso","seccions.seccion","centro_id","periodo_id","seccions.jornada","seccions.created_at","seccions.updated_at")
-                        ->where('asignaturas_secciones.docente_id','=',$docente->id)
-                        ->groupBy("seccions.id")
-                        ->get();
+                //se pide el formulario para el login  y se valida
+                if( $sace->get_from_login()) {
+                    //se intenta ser login con los datos del doncente
+                    if($sace->get_login_sace()) {
 
-                    if(!is_null($secciones) and sizeof($secciones) != 0){
+                        //se instancia el objto para trabajar con lor archivos XLS
+                        $managerXlsFile=new ManagerXlsFile($docente->user_sace);
+                        //se eliminan los archivos XLS antenriores
+                        $managerXlsFile->delete_file();
 
-                            //$asistecnias->asistencias;
-                            //$alumnos[1]->asistencias;
-                            foreach ($secciones as  $seccion) {
-                                # code...
-                                $seccion->modalidad;
-                                $seccion->periodo;
-                                $seccion->centro;
+                        //se intenta descargar los nuevos archivos xls del sace
+                        $resultado = $sace->get_descargar();
+
+                        $sace->logout();
+
+                        //se valida que se pudo descargar los archivos del sace
+                        if ($resultado) {
+
+                            //se vuelcan los datos del los archivos Xls a la  Base de datos
+                            $managerXlsFile->setDBLocalFromXls();
+
+                            $secciones = Seccion::join("asignaturas_secciones", "seccions.id", "=", "asignaturas_secciones.seccion_id")
+                                ->join("matriculas","seccions.id","=","matriculas.seccion_id")
+                                ->select("seccions.id", "seccions.modalidad_id", "seccions.curso", "seccions.seccion", "centro_id", "periodo_id", "seccions.jornada", "seccions.created_at", "seccions.updated_at")
+                                ->where('asignaturas_secciones.docente_id', '=', $docente->id)
+                                ->where('matriculas.year', '=',date("Y"))
+                                ->groupBy("seccions.id")
+                                ->get();
+
+                            if (!is_null($secciones) and is_object($secciones)) {
+
+                                //$asistecnias->asistencias;
+                                //$alumnos[1]->asistencias;
+                                foreach ($secciones as $seccion) {
+                                    # code...
+                                    $seccion->modalidad;
+                                    $seccion->periodo;
+                                    $seccion->centro;
+                                }
+                                //$secciones
+
+
+                                // $json_asistencias=json_decode($secciones, true);
+                                //se envia el json al navegador
+                                return response()->json($secciones);
+
                             }
-                            //$secciones
-                            
-
-                           // $json_asistencias=json_decode($secciones, true);
-                            //se envia el json al navegador
-                            return response()->json($secciones);
-
+                        }else{
+                            return response()->json( ['Error'=>"500", 'msg'=>'NO SE ENCONTRARON SECCIONES' ], 500 );
                         }
+                    }else{
+                        return response()->json( ['Error'=>"500", 'msg'=>'EL USUARIO O CONTRASENA DEL SACE NO VALIDO' ], 500 );
+                    }
+                }else{
+                    return response()->json( ['Error'=>"500", 'msg'=>'El SACE NO RESPONDE' ], 500 );
                 }
 
-           //     return response()->json( ['Exito'=>true, 'msg'=>'se descargo los archivos con exito' ], 200 );
               }else{
-                  return response()->json( ['error'=>true, 'msg'=>'No se encontro ningun el docente' ], 204 );
+                  return response()->json( ['error'=>true, 'msg'=>'No se encontro ningun el docente' ], 500 );
               }
     }
 }
