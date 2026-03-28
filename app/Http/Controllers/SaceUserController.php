@@ -123,6 +123,54 @@ class SaceUserController extends Controller
         $docente=Docente::find($request->id);
 
 
+        //se instancia el objto para trabajar con lor archivos XLS
+        $managerXlsFile=new ManagerXlsFile($docente->user_sace);
+
+        //se eliminan los archivos XLS antenriores
+        $managerXlsFile->delete_file();
+
+        //se vuelcan los datos del los archivos Xls a la  Base de datos
+        $managerXlsFile->setDBLocalFromXls();
+
+        $secciones = Seccion::join("asignaturas_secciones", "seccions.id", "=", "asignaturas_secciones.seccion_id")
+            ->join("matriculas","seccions.id","=","matriculas.seccion_id")
+            ->select("seccions.id", "seccions.modalidad_id", "seccions.curso", "seccions.seccion", "centro_id", "periodo_id", "seccions.jornada", "seccions.created_at", "seccions.updated_at")
+            ->where('asignaturas_secciones.docente_id', '=', $docente->id)
+            ->where('matriculas.year', '=',date("Y"))
+            ->groupBy("seccions.id")
+            ->get();
+
+        if (!is_null($secciones) and is_object($secciones)) {
+
+            //$asistecnias->asistencias;
+            //$alumnos[1]->asistencias;
+            foreach ($secciones as $seccion) {
+                # code...
+                $seccion->modalidad;
+                $seccion->periodo;
+                $seccion->centro;
+            }
+            //$secciones
+
+
+            // $json_asistencias=json_decode($secciones, true);
+            //se envia el json al navegador
+            return response()->json($secciones);
+        }else{
+            return response()->json( ['Error'=>"500", 'msg'=>'NO SE ENCONTRARON SECCIONES' ], 500 );
+        }
+
+
+
+
+
+
+
+
+
+
+
+
         if(!is_null($docente) or is_object($docente)){
 
 

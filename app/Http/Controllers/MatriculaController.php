@@ -85,24 +85,36 @@ class MatriculaController extends Controller
     }
 
     public function buscar_por_year(Request $request){
-        //return "Hola mundo";
-        //$matriculas=Matricula::where('seccion_id',"=",$request->seccion_id)->where('year',"=",$request->year)->get();
-        $matriculas=Matricula::where('seccion_id',"=",$request->seccion_id)->get();
 
-        // se verifica la existencia del alumno
-        if(!is_null($matriculas) or sizeof($matriculas)!= 0){
 
-            foreach ($matriculas as $matricula) {
-                $matricula->alumno;
-                $matricula->seccion;
-                $matricula->seccion->modalidad;
+        $validator = \Validator::make($request->all(), ['seccion_id' => 'required']);
+
+        if ($validator->fails()){
+
+            return response()->json($validator->errors(), 504);
+
+        }else {
+
+            $year=date("Y");
+
+            $matriculas=Matricula::where('seccion_id',"=",$request->seccion_id)->where('year',"=",$year)->get();
+            //$matriculas = Matricula::where('seccion_id', "=", $request->seccion_id)->get();
+
+            // se verifica la existencia del alumno
+            if (!is_null($matriculas) or is_object($matriculas)) {
+
+                foreach ($matriculas as $matricula) {
+                    $matricula->alumno;
+                    $matricula->seccion;
+                    $matricula->seccion->modalidad;
+                }
+
+                //se envia el json al navegador
+                return response()->json($matriculas);
+
+            } else {
+                return response()->json(['error' => true, 'msg' => 'No se encontro las matriculas'], 204);
             }
-
-            //se envia el json al navegador
-            return response()->json($matriculas);
-
-        }else{
-               return response()->json( ['error'=>true, 'msg'=>'No se encontro las matriculas' ], 204 );
         }
     }
 }

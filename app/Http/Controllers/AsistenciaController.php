@@ -283,44 +283,47 @@ class AsistenciaController extends Controller
 
         }else{
 
-
-
             $asistencias=Encabezadoasistencia::join("asignaturas_secciones","encabezadoasistencias.asignatura_id","=","asignaturas_secciones.asignatura_id")
-              ->join("asignaturas", function($join){
-                $join->on("asignaturas.id","=","encabezadoasistencias.asignatura_id")
-                ->on("asignaturas_secciones.seccion_id","=","encabezadoasistencias.seccion_id");
-              })
+                ->join("asignaturas", function($join){
+                    $join->on("asignaturas.id","=","encabezadoasistencias.asignatura_id")
+                        ->on("asignaturas_secciones.seccion_id","=","encabezadoasistencias.seccion_id");
+                })
 
-              ->where('asignaturas_secciones.docente_id','=',$request->docente_id)
-               ->where('encabezadoasistencias.seccion_id','=',$request->seccion_id)
+                ->where('asignaturas_secciones.docente_id','=',$request->docente_id)
+                ->where('encabezadoasistencias.seccion_id','=',$request->seccion_id)
 
-              ->select("encabezadoasistencias.id","encabezadoasistencias.seccion_id","encabezadoasistencias.fecha","encabezadoasistencias.asignatura_id","encabezadoasistencias.created_at","encabezadoasistencias.updated_at")
-              ->orderByDesc('fecha')->get();
+                ->select("encabezadoasistencias.id","encabezadoasistencias.seccion_id","encabezadoasistencias.fecha","encabezadoasistencias.asignatura_id","encabezadoasistencias.created_at","encabezadoasistencias.updated_at")
+                ->orderByDesc('fecha')->get();
        
 
 
              // se verifica la existencia de la bodega
-        if(!is_null($asistencias) and sizeof($asistencias) != 0){
+        if(!is_null($asistencias) and is_object($asistencias)){
 
             //para conseguir las asistencias de los alumnos
 
+
+
                foreach($asistencias as $asistencia){
-                    $asistencia->detallesAsistencia;
+                   $asistencia->detallesAsistencia;
                     $asistencia->seccion->modalidad;
                     $asistencia->asignatura;
                     /*
                     foreach($asistencia->detallesAsistencia as $detalle){
                             $detalle->alumno;
-                    }*/
+                            $detalle->alumno->matriculas->where('matriculas.year', '=', $year);
+                    }
+                    */
+
                   //  $asistencia->detalles[0]->alumno;
 
                 }
                 //$asistencias->detalles;
                 
 
-                $json_asistencias=json_decode($asistencias, true);
+                //$json_asistencias=json_decode($asistencias, true);
                 //se envia el json al navegador
-                return response()->json($json_asistencias);
+                return response()->json($asistencias);
 
             }else{
                    return response()->json( ['error'=>true, 'msg'=>'No se encontro ningun asignatura' ], 422 );

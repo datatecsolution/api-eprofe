@@ -47,7 +47,11 @@ class ManagerXlsFile
             $this->centro=new Centro;
             $this->asignatura=new Asignatura();
             $this->docente=Docente::where('user_sace',"=",$docenteUserSace)->first();
-            $this->periodos=Periodo::where("estado","=","1")->get();
+            $mes=date("m");
+            if($mes>=2 and $mes<=6){
+                $this->periodos=Periodo::where("estado","=","1")->orderBy("id","DESC")->get();
+            }
+
             $this->year=date("Y");
         }
 
@@ -84,6 +88,7 @@ class ManagerXlsFile
                     $pathNew=$this->year."/".$this->docente->user_sace.'/'.$this->seccion->id.'_'.$this->asignatura->id.'.xls';
 
                     Storage::move($pathOld, $pathNew);
+                    $this->seccion=new Seccion;
 
                 }else{
                     $this->numFileXls=$this->numFileXls+1;

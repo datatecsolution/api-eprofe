@@ -66,23 +66,8 @@ class DocenteController extends Controller
         //
                     $docente=Docente::where('user_sace',"=",$request->user_sace)->first();
 
-                    if(!is_null($docente) or sizeof($docente) != 0){
+                    if(is_null($docente) or !is_object($docente)){
 
-
-                            $docente->nombre=$request->nombre;
-                            $docente->apellido=$request->apellido;
-                            $docente->genero=$request->genero;
-                            $docente->telefono=$request->telefono;
-                            $docente->direccion=$request->direccion;
-                            $docente->password_sace=Crypt::encryptString($request->password_sace);
-                            $docente->email=$request->email;
-                            $docente->password=Crypt::encryptString($request->password_sace);
-                            $docente->save();
-
-
-                        return response()->json($docente);
-
-                    }else{
                             $docente=new Docente;
 
                             $docente->username=$request->user_sace;
@@ -97,7 +82,19 @@ class DocenteController extends Controller
                             $docente->password=Crypt::encryptString($request->password_sace);
                             $docente->save();
                             return response()->json($docente);
-                        }
+
+                        }else{
+                        $docente->nombre=$request->nombre;
+                        $docente->apellido=$request->apellido;
+                        $docente->genero=$request->genero;
+                        $docente->telefono=$request->telefono;
+                        $docente->direccion=$request->direccion;
+                        $docente->password_sace=Crypt::encryptString($request->password_sace);
+                        $docente->email=$request->email;
+                        $docente->password=Crypt::encryptString($request->password_sace);
+                        $docente->save();
+                        return response()->json($docente);
+                    }
                 }
     }
 

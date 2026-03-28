@@ -161,32 +161,39 @@ class SeccionController extends Controller
 
     public function docente_secciones(Request $request){
 
-        $secciones=Seccion::join("asignaturas_secciones","seccions.id","=","asignaturas_secciones.seccion_id")
-        ->select("seccions.id","seccions.modalidad_id","seccions.curso","seccions.seccion","centro_id","periodo_id","seccions.jornada","seccions.created_at","seccions.updated_at")
-        ->where('asignaturas_secciones.docente_id','=',$request->docente_id)
-        ->groupBy("seccions.id")
-        ->get();
 
-           // se verifica la existencia de la bodega
-        if(!is_null($secciones) and sizeof($secciones) != 0){
+        $validator = \Validator::make($request->all(), ['docente_id' => 'required']);
 
-            //$asistecnias->asistencias;
-            //$alumnos[1]->asistencias;
-            foreach ($secciones as  $seccion) {
-                # code...
-                $seccion->modalidad;
-                $seccion->periodo;
-                $seccion->centro;
+        if ($validator->fails()){
+
+            return response()->json($validator->errors(), 504);
+
+        }else {
+            //se toma el anio del servidor
+            $year=date("Y");
+
+            $secciones = Seccion::join("asignaturas_secciones", "seccions.id", "=", "asignaturas_secciones.seccion_id")
+                ->join("matriculas", "seccions.id", "=", "matriculas.seccion_id")
+                ->select("seccions.id", "seccions.modalidad_id", "seccions.curso", "seccions.seccion", "centro_id", "periodo_id", "seccions.jornada", "seccions.created_at", "seccions.updated_at")
+                ->where('asignaturas_secciones.docente_id', '=', $request->docente_id)
+                ->where('matriculas.year', '=', $year)
+                ->groupBy("seccions.id")
+                ->get();
+
+            // se verifica la existencia de la bodega
+            if (!is_null($secciones) and is_object($secciones)) {
+                foreach ($secciones as $seccion) {
+                    # code...
+                    $seccion->modalidad;
+                    $seccion->periodo;
+                    $seccion->centro;
+                }
+                //se envia el json al navegador
+                return response()->json($secciones);
+
+            } else {
+                return response()->json(['error' => true, 'msg' => 'No se encontro ninguna seccion'], 504);
             }
-            //$secciones
-            
-
-           // $json_asistencias=json_decode($secciones, true);
-            //se envia el json al navegador
-            return response()->json($secciones);
-
-        }else{
-               return response()->json( ['error'=>true, 'msg'=>'No se encontro ninguna seccion' ], 204 );
         }
 
     }

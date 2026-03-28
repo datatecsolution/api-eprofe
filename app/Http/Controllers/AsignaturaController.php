@@ -200,7 +200,7 @@ class AsignaturaController extends Controller
             $asignaturas=new Asignatura();
             $asignaturas=array();
 
-        if(!is_null($resultados) or sizeof($resultados)!= 0){
+        if(!is_null($resultados) or is_object($resultados)){
 
             
 

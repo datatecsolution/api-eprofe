@@ -298,7 +298,7 @@ class AcumulativoController extends Controller
               ->orderByDesc('acumulativos.id')->get();
 
               // se verifica la existencia del alumno
-              if(!is_null($acumulativos) and sizeof($acumulativos)!= 0){
+              if(!is_null($acumulativos) and is_object($acumulativos)){
 
                       foreach($acumulativos as $acumulativo){
                           $acumulativo->tipoAcumulativo;
@@ -339,26 +339,22 @@ class AcumulativoController extends Controller
 
         }else{
 
-
-              $acumulativos=Acumulativo::join("asignaturas_secciones","acumulativos.asignatura_id","=","asignaturas_secciones.asignatura_id")
-              ->join("asignaturas", function($join){
-                $join->on("asignaturas.id","=","acumulativos.asignatura_id")
-                ->on("asignaturas_secciones.seccion_id","=","acumulativos.seccion_id");
-              })
-
-               ->where('asignaturas_secciones.docente_id','=',$request->docente_id)
-              ->where('asignaturas_secciones.seccion_id','=',$request->seccion_id)
-
-              ->select("acumulativos.id","acumulativos.seccion_id","acumulativos.descripcion","acumulativos.tipo_acumulativo_id","acumulativos.fecha","acumulativos.parcial","acumulativos.valor","acumulativos.asignatura_id","acumulativos.created_at","acumulativos.updated_at")
-
-              ->orderByDesc('acumulativos.id')->get();
+            $acumulativos=Acumulativo::join("asignaturas_secciones","acumulativos.asignatura_id","=","asignaturas_secciones.asignatura_id")
+                ->join("asignaturas", function($join){
+                    $join->on("asignaturas.id","=","acumulativos.asignatura_id")
+                        ->on("asignaturas_secciones.seccion_id","=","acumulativos.seccion_id");
+                })
+                ->where('asignaturas_secciones.docente_id','=',$request->docente_id)
+                ->where('asignaturas_secciones.seccion_id','=',$request->seccion_id)
+                ->select("acumulativos.id","acumulativos.seccion_id","acumulativos.descripcion","acumulativos.tipo_acumulativo_id","acumulativos.fecha","acumulativos.parcial","acumulativos.valor","acumulativos.asignatura_id","acumulativos.created_at","acumulativos.updated_at")
+                ->orderByDesc('acumulativos.id')->get();
 
               // se verifica la existencia del alumno
-              if(!is_null($acumulativos) and sizeof($acumulativos)!= 0){
+              if(!is_null($acumulativos) and is_object($acumulativos)){
 
                       foreach($acumulativos as $acumulativo){
                           $acumulativo->tipoAcumulativo;
-                          $acumulativo->asignatura;
+                          //$acumulativo->asignatura;
                           $acumulativo->seccion->modalidad;
                           $acumulativo->notasAcumulativos;
 
