@@ -1,5 +1,7 @@
 package com.datatecsolution.eprofe.spring_api.controller;
 
+import com.datatecsolution.eprofe.spring_api.config.CryptoService;
+import com.datatecsolution.eprofe.spring_api.config.JwtTokenProvider;
 import com.datatecsolution.eprofe.spring_api.model.Docente;
 import com.datatecsolution.eprofe.spring_api.repository.AsignaturaSeccionRepository;
 import com.datatecsolution.eprofe.spring_api.repository.DocenteRepository;
@@ -7,6 +9,8 @@ import com.datatecsolution.eprofe.spring_api.service.ExcelExportService;
 import com.datatecsolution.eprofe.spring_api.service.SaceScraperService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.web.bind.annotation.*;
 import java.util.Optional;
 import java.util.Map;
@@ -15,6 +19,7 @@ import java.util.HashMap;
 @RestController
 @RequestMapping("/api/sace")
 @CrossOrigin(origins = "*")
+@Tag(name = "SACE", description = "Login SACE, subida y preview de notas")
 public class SaceController {
 
     @Autowired
@@ -29,6 +34,13 @@ public class SaceController {
     @Autowired
     private SaceScraperService saceScraperService;
 
+    @Autowired
+    private JwtTokenProvider jwtTokenProvider;
+
+    @Autowired
+    private CryptoService cryptoService;
+
+    @Operation(summary = "Login de docente via SACE")
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody Map<String, String> payload) {
         String cookies = payload.get("cookies");
@@ -46,9 +58,12 @@ public class SaceController {
         if (docenteOpt.isPresent()) {
             docente = docenteOpt.get();
             // Update password if provided and different
-            if (password != null && !password.isBlank() && !password.equals(docente.getPasswordSace())) {
-                docente.setPasswordSace(password);
-                docenteRepository.save(docente);
+            if (password != null && !password.isBlank()) {
+                String decrypted = cryptoService.decrypt(docente.getPasswordSace());
+                if (!password.equals(decrypted)) {
+                    docente.setPasswordSace(cryptoService.encrypt(password));
+                    docenteRepository.save(docente);
+                }
             }
         } else {
             // Only create new docente if cookies are provided (SACE sync needed)
@@ -61,18 +76,21 @@ public class SaceController {
             }
             docente = new Docente();
             docente.setUserSace(username);
-            docente.setPasswordSace(password != null ? password : "");
+            docente.setPasswordSace(password != null ? cryptoService.encrypt(password) : "");
             docente.setNombre("SACE");
             docente.setApellido("Docente");
             docente = docenteRepository.save(docente);
         }
 
-        // Check if docente has synced data (asignaturas_secciones)
-        boolean hasData = !asignaturaSeccionRepository.findByDocente(docente).isEmpty();
+        // Check if docente has synced data in active periodos
+        boolean hasData = !asignaturaSeccionRepository.findByDocenteAndPeriodoActivo(docente).isEmpty();
+
+        String token = jwtTokenProvider.generateToken(docente.getId(), docente.getUserSace());
 
         Map<String, Object> response = new HashMap<>();
         response.put("message", "Login successful");
         response.put("success", true);
+        response.put("token", token);
         response.put("docente", docente);
         response.put("hasData", hasData);
         response.put("needsSaceSync", !hasData);
@@ -93,6 +111,7 @@ public class SaceController {
      *   "cookies": String (cookies de sesion SACE del WebView, opcional si ya logueado)
      * }
      */
+    @Operation(summary = "Subir notas al SACE")
     @PostMapping("/subir-notas")
     public ResponseEntity<?> subirNotas(@RequestBody Map<String, Object> payload) {
         try {
@@ -120,7 +139,7 @@ public class SaceController {
             } else {
                 // Intentar login con credenciales del docente
                 boolean loggedIn = saceScraperService.login(
-                        docente.getUserSace(), docente.getPasswordSace());
+                        docente.getUserSace(), cryptoService.decrypt(docente.getPasswordSace()));
                 if (!loggedIn) {
                     return ResponseEntity.status(401)
                             .body(Map.of("success", false,
@@ -154,6 +173,7 @@ public class SaceController {
      * Endpoint para descargar el Excel rellenado con notas (sin subir al SACE).
      * Util para que el docente revise el archivo antes de subirlo.
      */
+    @Operation(summary = "Preview del Excel con notas sin subir al SACE")
     @PostMapping("/preview-notas")
     public ResponseEntity<?> previewNotas(@RequestBody Map<String, Object> payload) {
         try {

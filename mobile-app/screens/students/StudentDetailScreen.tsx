@@ -1,13 +1,28 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ActivityIndicator, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, ActivityIndicator, ScrollView } from 'react-native';
 import { ScreenWrapper } from '../../components/ScreenWrapper';
-import { useRoute, useNavigation } from '@react-navigation/native';
+import { useRoute } from '@react-navigation/native';
 import { useDatabase } from '@nozbe/watermelondb/hooks';
 import Alumno from '../../model/Alumno';
+import { Avatar, Card } from '../../components/ui';
+import { Phone, Calendar, Users } from 'lucide-react-native';
+
+const InfoRow = ({ icon, label, value, isLast = false }: { icon: React.ReactNode; label: string; value: string; isLast?: boolean }) => (
+    <View className={`flex-row items-center py-3.5 ${!isLast ? 'border-b border-surface-50' : ''}`}>
+        <View className="mr-3">{icon}</View>
+        <View className="flex-1">
+            <Text className="text-xs text-surface-400" style={{ fontFamily: 'Inter_400Regular' }}>
+                {label}
+            </Text>
+            <Text className="text-base text-surface-800 mt-0.5" style={{ fontFamily: 'Inter_500Medium' }}>
+                {value}
+            </Text>
+        </View>
+    </View>
+);
 
 export default function StudentDetailScreen() {
     const route = useRoute<any>();
-    const navigation = useNavigation();
     const database = useDatabase();
     const { alumnoId } = route.params;
 
@@ -29,46 +44,63 @@ export default function StudentDetailScreen() {
     }, [alumnoId]);
 
     if (loading || !alumno) {
-        return <View className="flex-1 justify-center items-center"><ActivityIndicator /></View>;
+        return (
+            <View className="flex-1 justify-center items-center bg-surface-50">
+                <ActivityIndicator size="large" color="#16a34a" />
+            </View>
+        );
     }
 
+    const fullName = `${alumno.nombre} ${alumno.apellido}`;
+
     return (
-        <ScreenWrapper className="bg-gray-50">
-            <View className="bg-blue-600 p-6 items-center pt-10">
-                <View className="h-24 w-24 bg-white rounded-full items-center justify-center mb-4">
-                    <Text className="text-blue-600 font-bold text-4xl">{alumno.nombre.charAt(0)}</Text>
+        <ScreenWrapper className="bg-surface-50">
+            <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+                {/* Header */}
+                <View className="items-center pt-10 pb-6">
+                    <Avatar name={fullName} size="xl" />
+                    <Text
+                        className="text-xl text-surface-900 mt-4"
+                        style={{ fontFamily: 'Inter_700Bold' }}
+                    >
+                        {fullName}
+                    </Text>
+                    <Text
+                        className="text-sm text-surface-400 mt-0.5"
+                        style={{ fontFamily: 'Inter_400Regular' }}
+                    >
+                        {alumno.rne || 'Sin RNE'}
+                    </Text>
                 </View>
-                <Text className="text-white text-2xl font-bold">{alumno.nombre} {alumno.apellido}</Text>
-                <Text className="text-blue-100 text-lg">{alumno.rne || 'Sin RNE'}</Text>
-            </View>
 
-            <ScrollView className="flex-1 p-4">
-                <View className="bg-white rounded-lg shadow-sm p-4 mb-4">
-                    <Text className="text-lg font-bold text-gray-800 mb-4 border-b border-gray-100 pb-2">Información Personal</Text>
-
-                    <InfoRow label="Teléfono" value={alumno.telefono?.toString() || 'N/A'} />
-                    <InfoRow label="Fecha Nacimiento" value={alumno.fechaNacimiento ? new Date(alumno.fechaNacimiento).toLocaleDateString() : 'N/A'} />
-                    <InfoRow label="Género" value={alumno.genero === 1 ? 'Masculino' : 'Femenino'} />
+                {/* Info */}
+                <View className="px-5">
+                    <Text
+                        className="text-sm text-surface-400 mb-3 uppercase tracking-wider"
+                        style={{ fontFamily: 'Inter_600SemiBold' }}
+                    >
+                        Información
+                    </Text>
+                    <Card>
+                        <InfoRow
+                            icon={<Phone size={18} color="#a8a29e" />}
+                            label="Teléfono"
+                            value={alumno.telefono?.toString() || 'N/A'}
+                        />
+                        <InfoRow
+                            icon={<Calendar size={18} color="#a8a29e" />}
+                            label="Fecha de nacimiento"
+                            value={alumno.fechaNacimiento ? new Date(alumno.fechaNacimiento).toLocaleDateString() : 'N/A'}
+                        />
+                        <InfoRow
+                            icon={<Users size={18} color="#a8a29e" />}
+                            label="Género"
+                            value={alumno.genero === 1 ? 'Masculino' : 'Femenino'}
+                            isLast
+                        />
+                    </Card>
                 </View>
-
-                {/* Future: Add Academic History or Attendance Summary here */}
             </ScrollView>
-
-            <View className="p-4">
-                <TouchableOpacity
-                    className="bg-gray-200 p-4 rounded-lg items-center"
-                    onPress={() => navigation.goBack()}
-                >
-                    <Text className="text-gray-800 font-bold">Volver</Text>
-                </TouchableOpacity>
-            </View>
         </ScreenWrapper>
     );
 }
-
-const InfoRow = ({ label, value }: { label: string, value: string }) => (
-    <View className="flex-row justify-between py-2 border-b border-gray-50">
-        <Text className="text-gray-500 font-medium">{label}</Text>
-        <Text className="text-gray-800 font-bold">{value}</Text>
-    </View>
-);

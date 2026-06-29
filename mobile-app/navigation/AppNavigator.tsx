@@ -55,24 +55,47 @@ function InitialSyncGate({ children }: { children: React.ReactNode }) {
 
     if (syncing) {
         return (
-            <View className="flex-1 justify-center items-center bg-white">
-                <ActivityIndicator size="large" color="#2563eb" />
-                <Text className="text-gray-600 mt-4 text-lg">Descargando datos...</Text>
-                <Text className="text-gray-400 mt-1">Esto solo ocurre la primera vez</Text>
+            <View className="flex-1 justify-center items-center bg-surface-50">
+                <ActivityIndicator size="large" color="#16a34a" />
+                <Text
+                    className="text-surface-700 mt-4 text-lg"
+                    style={{ fontFamily: 'Inter_600SemiBold' }}
+                >
+                    Descargando datos...
+                </Text>
+                <Text
+                    className="text-surface-400 mt-1"
+                    style={{ fontFamily: 'Inter_400Regular' }}
+                >
+                    Esto solo ocurre la primera vez
+                </Text>
             </View>
         );
     }
 
     if (error) {
         return (
-            <View className="flex-1 justify-center items-center bg-white p-8">
-                <Text className="text-red-500 text-xl font-bold mb-2">Error de sincronización</Text>
-                <Text className="text-gray-500 text-center mb-6">No se pudieron descargar los datos. Verifique su conexión a internet.</Text>
-                <TouchableOpacity
-                    className="bg-blue-600 px-8 py-4 rounded-lg"
-                    onPress={doSync}
+            <View className="flex-1 justify-center items-center bg-surface-50 p-8">
+                <Text
+                    className="text-danger text-xl mb-2"
+                    style={{ fontFamily: 'Inter_700Bold' }}
                 >
-                    <Text className="text-white font-bold text-lg">Reintentar</Text>
+                    Error de sincronización
+                </Text>
+                <Text
+                    className="text-surface-400 text-center mb-6"
+                    style={{ fontFamily: 'Inter_400Regular' }}
+                >
+                    No se pudieron descargar los datos. Verifica tu conexión a internet.
+                </Text>
+                <TouchableOpacity
+                    className="bg-primary-600 px-8 py-4 rounded-2xl shadow-button"
+                    onPress={doSync}
+                    activeOpacity={0.7}
+                >
+                    <Text className="text-white text-lg" style={{ fontFamily: 'Inter_600SemiBold' }}>
+                        Reintentar
+                    </Text>
                 </TouchableOpacity>
             </View>
         );
@@ -86,8 +109,8 @@ export default function AppNavigator() {
 
     if (loading) {
         return (
-            <View className="flex-1 justify-center items-center bg-white">
-                <ActivityIndicator size="large" color="#0000ff" />
+            <View className="flex-1 justify-center items-center bg-surface-50">
+                <ActivityIndicator size="large" color="#16a34a" />
             </View>
         );
     }

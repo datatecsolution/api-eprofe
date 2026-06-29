@@ -4,6 +4,8 @@ import com.datatecsolution.eprofe.spring_api.model.Seccion;
 import com.datatecsolution.eprofe.spring_api.service.SaceSyncService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -12,11 +14,13 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/usersace")
 @CrossOrigin(origins = "*")
+@Tag(name = "SACE Sync", description = "Sincronizacion de datos con el SACE")
 public class SaceSyncController {
 
     @Autowired
     private SaceSyncService saceSyncService;
 
+    @Operation(summary = "Sincronizar datos del docente desde el SACE")
     @PostMapping("/sicronizar")
     public ResponseEntity<?> sincronizar(@RequestBody Map<String, Object> payload) {
         try {

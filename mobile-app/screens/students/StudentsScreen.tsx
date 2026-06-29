@@ -4,20 +4,28 @@ import { useNavigation } from '@react-navigation/native';
 import { useDatabase } from '@nozbe/watermelondb/hooks';
 import { Q } from '@nozbe/watermelondb';
 import Alumno from '../../model/Alumno';
+import { Avatar, Card, EmptyState } from '../../components/ui';
+import { Search, ChevronRight, Users } from 'lucide-react-native';
 
 const StudentItem = ({ alumno, seccionLabel, onPress }: { alumno: Alumno; seccionLabel?: string; onPress: () => void }) => (
-    <TouchableOpacity
-        className="bg-white p-4 mb-3 rounded-lg shadow-sm border border-gray-100 flex-row items-center"
-        onPress={onPress}
-    >
-        <View className="h-10 w-10 bg-blue-100 rounded-full items-center justify-center mr-3">
-            <Text className="text-blue-600 font-bold text-lg">{alumno.nombre.charAt(0)}</Text>
+    <Card className="mb-2" onPress={onPress}>
+        <View className="flex-row items-center">
+            <Avatar name={`${alumno.nombre} ${alumno.apellido}`} size="sm" />
+            <View className="flex-1 ml-3">
+                <Text
+                    className="text-base text-surface-800"
+                    style={{ fontFamily: 'Inter_500Medium' }}
+                    numberOfLines={1}
+                >
+                    {alumno.nombre} {alumno.apellido}
+                </Text>
+                <Text className="text-xs text-surface-400" style={{ fontFamily: 'Inter_400Regular' }}>
+                    {alumno.rne || 'Sin RNE'}{seccionLabel ? ` · ${seccionLabel}` : ''}
+                </Text>
+            </View>
+            <ChevronRight size={18} color="#d6d3d1" />
         </View>
-        <View className="flex-1">
-            <Text className="text-lg font-bold text-gray-800">{alumno.nombre} {alumno.apellido}</Text>
-            <Text className="text-gray-500 text-xs">{alumno.rne || 'No RNE'}{seccionLabel ? ` · ${seccionLabel}` : ''}</Text>
-        </View>
-    </TouchableOpacity>
+    </Card>
 );
 
 type SeccionOption = { id: string; label: string };
@@ -32,7 +40,6 @@ export default function StudentsScreen() {
     const [alumnoSecciones, setAlumnoSecciones] = useState<Record<string, string>>({});
     const [loading, setLoading] = useState(true);
 
-    // Load secciones
     useEffect(() => {
         async function loadSecciones() {
             const seccionRecords = await database.get('secciones').query().fetch();
@@ -45,13 +52,11 @@ export default function StudentsScreen() {
         loadSecciones();
     }, []);
 
-    // Load alumnos based on selected section
     useEffect(() => {
         async function loadAlumnos() {
             setLoading(true);
             try {
                 if (selectedSeccion) {
-                    // Get matriculas for this section, then fetch alumnos
                     const matriculas = await database.get('matriculas').query(
                         Q.where('seccion_id', selectedSeccion)
                     ).fetch();
@@ -66,11 +71,9 @@ export default function StudentsScreen() {
                     }
                     setAlumnoSecciones({});
                 } else {
-                    // All alumnos
                     const allAlumnos = await database.get('alumnos').query().fetch();
                     setAlumnos(allAlumnos as Alumno[]);
 
-                    // Build alumno -> seccion label map
                     const matriculas = await database.get('matriculas').query().fetch();
                     const seccionMap: Record<string, string> = {};
                     for (const s of secciones) {
@@ -101,57 +104,80 @@ export default function StudentsScreen() {
     );
 
     return (
-        <SafeAreaView className="flex-1 bg-gray-50 p-4">
-            <Text className="text-2xl font-bold text-gray-800 mb-3 ml-2">Alumnos</Text>
-
-            {/* Section filter */}
-            {secciones.length > 0 && (
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-3">
-                    <TouchableOpacity
-                        className={`px-4 py-2 mr-2 rounded-full ${!selectedSeccion ? 'bg-blue-600' : 'bg-gray-200'}`}
-                        onPress={() => setSelectedSeccion(null)}
-                    >
-                        <Text className={`text-sm font-bold ${!selectedSeccion ? 'text-white' : 'text-gray-600'}`}>Todos</Text>
-                    </TouchableOpacity>
-                    {secciones.map(s => (
+        <SafeAreaView className="flex-1 bg-surface-50">
+            <View className="px-5 pt-2 flex-1">
+                {/* Section filter */}
+                {secciones.length > 0 && (
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-3 -mx-1">
                         <TouchableOpacity
-                            key={s.id}
-                            className={`px-4 py-2 mr-2 rounded-full ${selectedSeccion === s.id ? 'bg-blue-600' : 'bg-gray-200'}`}
-                            onPress={() => setSelectedSeccion(s.id)}
+                            className={`px-4 py-2.5 mx-1 rounded-xl ${!selectedSeccion ? 'bg-primary-600' : 'bg-surface-100'}`}
+                            onPress={() => setSelectedSeccion(null)}
+                            activeOpacity={0.7}
                         >
-                            <Text className={`text-sm font-bold ${selectedSeccion === s.id ? 'text-white' : 'text-gray-600'}`}>{s.label}</Text>
+                            <Text
+                                className={`text-sm ${!selectedSeccion ? 'text-white' : 'text-surface-600'}`}
+                                style={{ fontFamily: 'Inter_600SemiBold' }}
+                            >
+                                Todos
+                            </Text>
                         </TouchableOpacity>
-                    ))}
-                </ScrollView>
-            )}
+                        {secciones.map(s => (
+                            <TouchableOpacity
+                                key={s.id}
+                                className={`px-4 py-2.5 mx-1 rounded-xl ${selectedSeccion === s.id ? 'bg-primary-600' : 'bg-surface-100'}`}
+                                onPress={() => setSelectedSeccion(s.id)}
+                                activeOpacity={0.7}
+                            >
+                                <Text
+                                    className={`text-sm ${selectedSeccion === s.id ? 'text-white' : 'text-surface-600'}`}
+                                    style={{ fontFamily: 'Inter_500Medium' }}
+                                >
+                                    {s.label}
+                                </Text>
+                            </TouchableOpacity>
+                        ))}
+                    </ScrollView>
+                )}
 
-            <View className="bg-white p-3 rounded-lg border border-gray-200 mb-4 flex-row items-center">
-                <TextInput
-                    placeholder="Buscar alumno..."
-                    className="flex-1 text-lg"
-                    value={search}
-                    onChangeText={setSearch}
-                />
+                {/* Search */}
+                <View className="flex-row items-center bg-white border-2 border-surface-200 rounded-2xl px-4 mb-4">
+                    <Search size={18} color="#a8a29e" />
+                    <TextInput
+                        placeholder="Buscar alumno..."
+                        className="flex-1 py-3.5 ml-3 text-base text-surface-800"
+                        style={{ fontFamily: 'Inter_400Regular' }}
+                        placeholderTextColor="#a8a29e"
+                        value={search}
+                        onChangeText={setSearch}
+                    />
+                </View>
+
+                {loading ? (
+                    <View className="flex-1 justify-center items-center">
+                        <ActivityIndicator size="large" color="#16a34a" />
+                    </View>
+                ) : (
+                    <FlatList
+                        data={filteredAlumnos}
+                        keyExtractor={(item) => item.id}
+                        renderItem={({ item }) => (
+                            <StudentItem
+                                alumno={item}
+                                seccionLabel={!selectedSeccion ? alumnoSecciones[item.id] : undefined}
+                                onPress={() => handlePress(item)}
+                            />
+                        )}
+                        showsVerticalScrollIndicator={false}
+                        ListEmptyComponent={
+                            <EmptyState
+                                icon={<Users size={28} color="#a8a29e" />}
+                                title="Sin resultados"
+                                description="No se encontraron alumnos."
+                            />
+                        }
+                    />
+                )}
             </View>
-
-            {loading ? (
-                <ActivityIndicator className="mt-10" />
-            ) : (
-                <FlatList
-                    data={filteredAlumnos}
-                    keyExtractor={(item) => item.id}
-                    renderItem={({ item }) => (
-                        <StudentItem
-                            alumno={item}
-                            seccionLabel={!selectedSeccion ? alumnoSecciones[item.id] : undefined}
-                            onPress={() => handlePress(item)}
-                        />
-                    )}
-                    ListEmptyComponent={
-                        <Text className="text-center text-gray-400 mt-10">No se encontraron alumnos.</Text>
-                    }
-                />
-            )}
         </SafeAreaView>
     );
 }

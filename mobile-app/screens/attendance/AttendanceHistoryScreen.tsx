@@ -3,6 +3,8 @@ import { View, Text, FlatList, TouchableOpacity, SafeAreaView, ActivityIndicator
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { withDatabase } from '@nozbe/watermelondb/DatabaseProvider';
 import { Q } from '@nozbe/watermelondb';
+import { Card, EmptyState } from '../../components/ui';
+import { Calendar, Inbox } from 'lucide-react-native';
 
 const formatDateDisplay = (dateStr: string) => {
     const [y, m, d] = dateStr.split('-');
@@ -36,7 +38,6 @@ function AttendanceHistoryScreen({ database }: { database: any }) {
                 )
                 .fetch();
 
-            // Group by fecha
             const byDate: Record<string, any[]> = {};
             asistencias.forEach((a: any) => {
                 if (!byDate[a.fecha]) byDate[a.fecha] = [];
@@ -66,7 +67,6 @@ function AttendanceHistoryScreen({ database }: { database: any }) {
     }, []);
 
     const handlePress = (fecha: string) => {
-        // Navigate to TakeAttendance with a specific date pre-selected
         navigation.navigate('TakeAttendance', {
             asignaturaSeccionId,
             nombreClase,
@@ -78,7 +78,7 @@ function AttendanceHistoryScreen({ database }: { database: any }) {
     const handleDelete = (fecha: string) => {
         Alert.alert(
             'Eliminar asistencia',
-            `¿Eliminar toda la asistencia del ${formatDateDisplay(fecha)}?`,
+            `¿Eliminar la asistencia del ${formatDateDisplay(fecha)}?`,
             [
                 { text: 'Cancelar', style: 'cancel' },
                 {
@@ -109,54 +109,109 @@ function AttendanceHistoryScreen({ database }: { database: any }) {
         );
     };
 
-    if (loading) return <View className="flex-1 justify-center items-center"><ActivityIndicator size="large" /></View>;
+    if (loading) {
+        return (
+            <View className="flex-1 justify-center items-center bg-surface-50">
+                <ActivityIndicator size="large" color="#16a34a" />
+            </View>
+        );
+    }
 
     return (
-        <SafeAreaView className="flex-1 bg-gray-50">
-            <View className="bg-blue-600 p-4 pt-10">
-                <Text className="text-white text-xl font-bold">{nombreClase}</Text>
-                <Text className="text-blue-100">{detalleSeccion}</Text>
-                <Text className="text-blue-200 text-sm mt-1">Historial de Asistencia</Text>
+        <SafeAreaView className="flex-1 bg-surface-50">
+            {/* Header */}
+            <View className="bg-white px-5 pt-10 pb-4 border-b border-surface-100">
+                <Text className="text-xl text-surface-900" style={{ fontFamily: 'Inter_700Bold' }}>
+                    {nombreClase}
+                </Text>
+                <Text className="text-sm text-surface-400 mt-0.5" style={{ fontFamily: 'Inter_400Regular' }}>
+                    {detalleSeccion} — Historial
+                </Text>
             </View>
 
             {history.length === 0 ? (
-                <View className="flex-1 justify-center items-center p-8">
-                    <Text className="text-gray-400 text-lg">No hay asistencia registrada</Text>
-                    <Text className="text-gray-300 text-sm mt-1">Tome asistencia desde la pantalla anterior</Text>
-                </View>
+                <EmptyState
+                    icon={<Inbox size={32} color="#a8a29e" />}
+                    title="Sin registros"
+                    description="Aún no has pasado lista para esta clase."
+                />
             ) : (
                 <FlatList
                     data={history}
                     keyExtractor={item => item.fecha}
-                    contentContainerStyle={{ padding: 16 }}
+                    contentContainerStyle={{ padding: 20 }}
+                    showsVerticalScrollIndicator={false}
                     renderItem={({ item }) => (
-                        <TouchableOpacity
-                            className="bg-white p-4 mb-3 rounded-lg border border-gray-100"
+                        <Card
+                            className="mb-3"
                             onPress={() => handlePress(item.fecha)}
-                            onLongPress={() => handleDelete(item.fecha)}
                         >
-                            <View className="flex-row justify-between items-center mb-2">
-                                <Text className="text-lg font-bold text-gray-800">
-                                    {formatDateDisplay(item.fecha)}
-                                </Text>
-                                <Text className="text-gray-400 text-sm">{item.total} alumnos</Text>
-                            </View>
-                            <View className="flex-row">
-                                <View className="flex-row items-center mr-4">
-                                    <View className="w-3 h-3 rounded-full bg-green-500 mr-1" />
-                                    <Text className="text-gray-600 text-sm">{item.presentes} P</Text>
+                            <TouchableOpacity
+                                onLongPress={() => handleDelete(item.fecha)}
+                                activeOpacity={1}
+                            >
+                                <View className="flex-row justify-between items-center mb-3">
+                                    <View className="flex-row items-center">
+                                        <Calendar size={16} color="#78716c" />
+                                        <Text
+                                            className="text-base text-surface-800 ml-2"
+                                            style={{ fontFamily: 'Inter_600SemiBold' }}
+                                        >
+                                            {formatDateDisplay(item.fecha)}
+                                        </Text>
+                                    </View>
+                                    <Text
+                                        className="text-sm text-surface-400"
+                                        style={{ fontFamily: 'Inter_400Regular' }}
+                                    >
+                                        {item.total} alumnos
+                                    </Text>
                                 </View>
-                                <View className="flex-row items-center mr-4">
-                                    <View className="w-3 h-3 rounded-full bg-red-500 mr-1" />
-                                    <Text className="text-gray-600 text-sm">{item.ausentes} A</Text>
+
+                                {/* Status bar visual */}
+                                <View className="flex-row h-2 rounded-full overflow-hidden mb-3">
+                                    {item.presentes > 0 && (
+                                        <View
+                                            className="bg-green-500 h-full"
+                                            style={{ flex: item.presentes }}
+                                        />
+                                    )}
+                                    {item.ausentes > 0 && (
+                                        <View
+                                            className="bg-red-500 h-full"
+                                            style={{ flex: item.ausentes }}
+                                        />
+                                    )}
+                                    {item.excusados > 0 && (
+                                        <View
+                                            className="bg-amber-500 h-full"
+                                            style={{ flex: item.excusados }}
+                                        />
+                                    )}
                                 </View>
-                                <View className="flex-row items-center">
-                                    <View className="w-3 h-3 rounded-full bg-yellow-500 mr-1" />
-                                    <Text className="text-gray-600 text-sm">{item.excusados} E</Text>
+
+                                <View className="flex-row">
+                                    <View className="flex-row items-center mr-5">
+                                        <View className="w-2.5 h-2.5 rounded-full bg-green-500 mr-1.5" />
+                                        <Text className="text-sm text-surface-600" style={{ fontFamily: 'Inter_500Medium' }}>
+                                            {item.presentes}
+                                        </Text>
+                                    </View>
+                                    <View className="flex-row items-center mr-5">
+                                        <View className="w-2.5 h-2.5 rounded-full bg-red-500 mr-1.5" />
+                                        <Text className="text-sm text-surface-600" style={{ fontFamily: 'Inter_500Medium' }}>
+                                            {item.ausentes}
+                                        </Text>
+                                    </View>
+                                    <View className="flex-row items-center">
+                                        <View className="w-2.5 h-2.5 rounded-full bg-amber-500 mr-1.5" />
+                                        <Text className="text-sm text-surface-600" style={{ fontFamily: 'Inter_500Medium' }}>
+                                            {item.excusados}
+                                        </Text>
+                                    </View>
                                 </View>
-                            </View>
-                            <Text className="text-gray-300 text-xs mt-2">Toca para editar, mantén presionado para eliminar</Text>
-                        </TouchableOpacity>
+                            </TouchableOpacity>
+                        </Card>
                     )}
                 />
             )}

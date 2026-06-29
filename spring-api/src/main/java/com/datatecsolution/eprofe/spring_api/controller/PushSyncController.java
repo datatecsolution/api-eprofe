@@ -6,6 +6,8 @@ import com.datatecsolution.eprofe.spring_api.repository.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
@@ -15,6 +17,7 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/api/sync")
 @CrossOrigin(origins = "*")
+@Tag(name = "Push Sync", description = "Push de datos offline desde la app movil")
 public class PushSyncController {
 
     @Autowired
@@ -35,6 +38,7 @@ public class PushSyncController {
     @Autowired
     private TipoAcumulativoRepository tipoAcumulativoRepository;
 
+    @Operation(summary = "Enviar datos offline (asistencias, acumulativos, notas) al servidor")
     @PostMapping("/push")
     @Transactional
     public ResponseEntity<?> pushChanges(@RequestBody PushDataDTO pushData) {

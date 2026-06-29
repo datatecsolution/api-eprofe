@@ -4,6 +4,7 @@ import { ScreenWrapper } from '../../components/ScreenWrapper';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useDatabase } from '@nozbe/watermelondb/hooks';
 import { Q } from '@nozbe/watermelondb';
+import { Button } from '../../components/ui';
 import Toast from 'react-native-toast-message';
 
 const PARCIALES = [
@@ -27,11 +28,10 @@ export default function CreateGradeScreen() {
     const [tipoAcumulativoId, setTipoAcumulativoId] = useState<string | null>(null);
     const [tipos, setTipos] = useState<any[]>([]);
     const [puntosUsados, setPuntosUsados] = useState(0);
-    const [originalValor, setOriginalValor] = useState(0); // To exclude current acumulativo from sum when editing
+    const [originalValor, setOriginalValor] = useState(0);
     const [loading, setLoading] = useState(false);
     const [loadingData, setLoadingData] = useState(true);
 
-    // Load tipos and existing acumulativo if editing
     useEffect(() => {
         async function loadData() {
             try {
@@ -58,7 +58,6 @@ export default function CreateGradeScreen() {
         loadData();
     }, []);
 
-    // Recalculate used points when parcial changes
     useEffect(() => {
         async function calcUsados() {
             try {
@@ -68,7 +67,6 @@ export default function CreateGradeScreen() {
                     Q.where('parcial', parcial)
                 ).fetch();
                 const suma = existentes.reduce((acc: number, a: any) => acc + (a.valor || 0), 0);
-                // When editing, exclude the current acumulativo's original valor
                 const adjustment = isEditing ? originalValor : 0;
                 setPuntosUsados(suma - adjustment);
             } catch (e) {
@@ -82,20 +80,20 @@ export default function CreateGradeScreen() {
 
     const handleSave = async () => {
         if (!nombre || !valor) {
-            Alert.alert('Error', 'Todos los campos son obligatorios');
+            Alert.alert('Campos requeridos', 'Ingresa el nombre y el valor de la evaluación.');
             return;
         }
 
         const valorNum = parseFloat(valor);
         if (isNaN(valorNum) || valorNum <= 0) {
-            Alert.alert('Error', 'El valor debe ser un número positivo');
+            Alert.alert('Valor inválido', 'El valor debe ser un número mayor a 0.');
             return;
         }
 
         if (valorNum > puntosDisponibles) {
             Alert.alert(
-                'Excede el límite',
-                `Solo quedan ${puntosDisponibles} puntos disponibles en el ${PARCIALES[parcial - 1].label}.\nYa usados: ${puntosUsados} de 100.`
+                'Puntos insuficientes',
+                `Solo quedan ${puntosDisponibles} puntos disponibles en el ${PARCIALES[parcial - 1].label}.`
             );
             return;
         }
@@ -115,17 +113,15 @@ export default function CreateGradeScreen() {
                         record._raw.uploaded = false;
                     });
                 });
-                Toast.show({ type: 'success', text1: 'Éxito', text2: 'Evaluación actualizada' });
+                Toast.show({ type: 'success', text1: 'Listo', text2: 'Evaluación actualizada' });
             } else {
                 await database.write(async () => {
                     await database.get('acumulativos').create((record: any) => {
-                        // Set raw relation IDs first
                         record._raw.asignatura_id = asignaturaId;
                         record._raw.seccion_id = seccionId;
                         if (tipoAcumulativoId) {
                             record._raw.tipo_acumulativo_id = tipoAcumulativoId;
                         }
-                        // Then set decorated fields
                         record._raw.descripcion = nombre;
                         record._raw.valor = valorNum;
                         record._raw.parcial = parcial;
@@ -133,40 +129,52 @@ export default function CreateGradeScreen() {
                         record._raw.uploaded = false;
                     });
                 });
-                Toast.show({ type: 'success', text1: 'Éxito', text2: 'Evaluación creada' });
+                Toast.show({ type: 'success', text1: 'Listo', text2: 'Evaluación creada' });
             }
-
             navigation.goBack();
         } catch (error: any) {
-            console.error('Save acumulativo error:', error?.message || error, { asignaturaId, seccionId, nombre, valor: valorNum, parcial });
-            Toast.show({ type: 'error', text1: 'Error', text2: error?.message || 'No se pudo guardar el acumulativo' });
+            console.error('Save acumulativo error:', error?.message || error);
+            Toast.show({ type: 'error', text1: 'Error', text2: error?.message || 'No se pudo guardar' });
         } finally {
             setLoading(false);
         }
     };
 
     if (loadingData) {
-        return <View className="flex-1 justify-center items-center"><ActivityIndicator size="large" /></View>;
+        return (
+            <View className="flex-1 justify-center items-center bg-surface-50">
+                <ActivityIndicator size="large" color="#16a34a" />
+            </View>
+        );
     }
 
     return (
-        <ScreenWrapper className="bg-white">
-            <ScrollView className="flex-1 p-4">
-                <Text className="text-xl font-bold mb-6 text-center">
-                    {isEditing ? 'Editar Evaluación' : 'Crear Evaluación'}
+        <ScreenWrapper className="bg-surface-50">
+            <ScrollView className="flex-1 px-5 pt-6" showsVerticalScrollIndicator={false}>
+                <Text
+                    className="text-2xl text-surface-900 mb-6"
+                    style={{ fontFamily: 'Inter_700Bold' }}
+                >
+                    {isEditing ? 'Editar Evaluación' : 'Nueva Evaluación'}
                 </Text>
 
                 <View className="web:max-w-2xl web:mx-auto w-full">
                     {/* Parcial selector */}
-                    <Text className="text-gray-600 mb-2 font-medium">Parcial</Text>
-                    <View className="flex-row mb-4">
+                    <Text className="text-sm text-surface-600 mb-2" style={{ fontFamily: 'Inter_500Medium' }}>
+                        Parcial
+                    </Text>
+                    <View className="flex-row mb-5 bg-surface-100 rounded-2xl p-1">
                         {PARCIALES.map((p) => (
                             <TouchableOpacity
                                 key={p.value}
-                                className={`flex-1 p-3 mr-1 rounded-lg items-center ${parcial === p.value ? 'bg-blue-600' : 'bg-gray-100'}`}
+                                className={`flex-1 py-3 rounded-xl items-center ${parcial === p.value ? 'bg-white shadow-card' : ''}`}
                                 onPress={() => setParcial(p.value)}
+                                activeOpacity={0.7}
                             >
-                                <Text className={`font-bold text-sm ${parcial === p.value ? 'text-white' : 'text-gray-600'}`}>
+                                <Text
+                                    className={`text-sm ${parcial === p.value ? 'text-surface-800' : 'text-surface-400'}`}
+                                    style={{ fontFamily: parcial === p.value ? 'Inter_600SemiBold' : 'Inter_500Medium' }}
+                                >
                                     {p.label}
                                 </Text>
                             </TouchableOpacity>
@@ -174,29 +182,45 @@ export default function CreateGradeScreen() {
                     </View>
 
                     {/* Points indicator */}
-                    <View className="bg-blue-50 p-3 rounded-lg mb-4 flex-row justify-between">
-                        <Text className="text-blue-700 font-medium">Puntos usados: {puntosUsados}/100</Text>
-                        <Text className="text-blue-700 font-bold">Disponibles: {puntosDisponibles}</Text>
+                    <View className="flex-row justify-between bg-primary-50 px-4 py-3 rounded-2xl mb-5">
+                        <Text className="text-sm text-primary-700" style={{ fontFamily: 'Inter_500Medium' }}>
+                            Usados: {puntosUsados}/100
+                        </Text>
+                        <Text className="text-sm text-primary-700" style={{ fontFamily: 'Inter_700Bold' }}>
+                            Disponibles: {puntosDisponibles}
+                        </Text>
                     </View>
 
                     {/* Tipo acumulativo selector */}
                     {tipos.length > 0 && (
-                        <View className="mb-4">
-                            <Text className="text-gray-600 mb-2 font-medium">Tipo (opcional)</Text>
+                        <View className="mb-5">
+                            <Text className="text-sm text-surface-600 mb-2" style={{ fontFamily: 'Inter_500Medium' }}>
+                                Tipo (opcional)
+                            </Text>
                             <View className="flex-row flex-wrap">
                                 <TouchableOpacity
-                                    className={`px-3 py-2 mr-2 mb-2 rounded-full ${!tipoAcumulativoId ? 'bg-gray-600' : 'bg-gray-200'}`}
+                                    className={`px-4 py-2.5 mr-2 mb-2 rounded-xl ${!tipoAcumulativoId ? 'bg-surface-800' : 'bg-surface-100'}`}
                                     onPress={() => setTipoAcumulativoId(null)}
+                                    activeOpacity={0.7}
                                 >
-                                    <Text className={`text-sm ${!tipoAcumulativoId ? 'text-white' : 'text-gray-600'}`}>Ninguno</Text>
+                                    <Text
+                                        className={`text-sm ${!tipoAcumulativoId ? 'text-white' : 'text-surface-600'}`}
+                                        style={{ fontFamily: 'Inter_500Medium' }}
+                                    >
+                                        Ninguno
+                                    </Text>
                                 </TouchableOpacity>
                                 {tipos.map((t: any) => (
                                     <TouchableOpacity
                                         key={t.id}
-                                        className={`px-3 py-2 mr-2 mb-2 rounded-full ${tipoAcumulativoId === t.id ? 'bg-blue-600' : 'bg-gray-200'}`}
+                                        className={`px-4 py-2.5 mr-2 mb-2 rounded-xl ${tipoAcumulativoId === t.id ? 'bg-primary-600' : 'bg-surface-100'}`}
                                         onPress={() => setTipoAcumulativoId(t.id)}
+                                        activeOpacity={0.7}
                                     >
-                                        <Text className={`text-sm ${tipoAcumulativoId === t.id ? 'text-white' : 'text-gray-600'}`}>
+                                        <Text
+                                            className={`text-sm ${tipoAcumulativoId === t.id ? 'text-white' : 'text-surface-600'}`}
+                                            style={{ fontFamily: 'Inter_500Medium' }}
+                                        >
                                             {t.descripcion}
                                         </Text>
                                     </TouchableOpacity>
@@ -207,38 +231,42 @@ export default function CreateGradeScreen() {
 
                     {/* Nombre */}
                     <View className="mb-4">
-                        <Text className="text-gray-600 mb-1 font-medium">Nombre</Text>
+                        <Text className="text-sm text-surface-600 mb-1.5" style={{ fontFamily: 'Inter_500Medium' }}>
+                            Nombre
+                        </Text>
                         <TextInput
-                            className="border border-gray-300 rounded-lg p-3 bg-gray-50 text-lg w-full"
+                            className="bg-surface-50 border-2 border-surface-200 rounded-2xl px-4 py-4 text-base text-surface-800"
+                            style={{ fontFamily: 'Inter_400Regular' }}
                             value={nombre}
                             onChangeText={setNombre}
                             placeholder="Ej: Examen 1, Tarea 2..."
+                            placeholderTextColor="#a8a29e"
                         />
                     </View>
 
                     {/* Valor */}
-                    <View className="mb-6">
-                        <Text className="text-gray-600 mb-1 font-medium">Valor (%)</Text>
+                    <View className="mb-8">
+                        <Text className="text-sm text-surface-600 mb-1.5" style={{ fontFamily: 'Inter_500Medium' }}>
+                            Valor (%)
+                        </Text>
                         <TextInput
-                            className="border border-gray-300 rounded-lg p-3 bg-gray-50 text-lg w-full"
+                            className="bg-surface-50 border-2 border-surface-200 rounded-2xl px-4 py-4 text-base text-surface-800"
+                            style={{ fontFamily: 'Inter_400Regular' }}
                             value={valor}
                             onChangeText={setValor}
                             placeholder={`Máximo ${puntosDisponibles}`}
+                            placeholderTextColor="#a8a29e"
                             keyboardType="numeric"
                         />
                     </View>
 
-                    <TouchableOpacity
-                        className={`bg-blue-600 p-4 rounded-lg items-center ${loading ? 'opacity-50' : ''}`}
+                    <Button
+                        title={isEditing ? 'Actualizar' : 'Guardar'}
                         onPress={handleSave}
-                        disabled={loading}
-                    >
-                        {loading ? <ActivityIndicator color="#fff" /> : (
-                            <Text className="text-white font-bold text-lg">
-                                {isEditing ? 'Actualizar' : 'Guardar'}
-                            </Text>
-                        )}
-                    </TouchableOpacity>
+                        loading={loading}
+                        size="lg"
+                    />
+                    <View className="h-8" />
                 </View>
             </ScrollView>
         </ScreenWrapper>

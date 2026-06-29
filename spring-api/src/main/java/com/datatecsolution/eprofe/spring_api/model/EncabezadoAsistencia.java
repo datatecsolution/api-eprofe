@@ -7,12 +7,14 @@ import lombok.AllArgsConstructor;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 @Entity
 @Table(name = "encabezadoasistencias")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class EncabezadoAsistencia {
 
     @Id
@@ -33,6 +35,7 @@ public class EncabezadoAsistencia {
     private Integer movilId;
 
     @OneToMany(mappedBy = "encabezadoAsistencia", cascade = CascadeType.ALL)
+    @JsonIgnoreProperties({"encabezadoAsistencia"})
     private List<DetalleAsistencia> detalles;
 
     @Column(name = "created_at")

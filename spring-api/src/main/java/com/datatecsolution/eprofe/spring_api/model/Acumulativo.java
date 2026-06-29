@@ -6,6 +6,7 @@ import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 @Entity
@@ -39,6 +40,10 @@ public class Acumulativo {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "asignatura_id")
     private Asignatura asignatura;
+
+    @OneToMany(mappedBy = "acumulativo", fetch = FetchType.LAZY)
+    @JsonIgnoreProperties({"acumulativo"})
+    private List<NotaAcumulativo> notasAcumulativos;
 
     @Column(name = "movil_id")
     private Integer movilId;

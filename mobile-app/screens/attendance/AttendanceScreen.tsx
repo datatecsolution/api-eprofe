@@ -5,6 +5,8 @@ import { withDatabase } from '@nozbe/watermelondb/DatabaseProvider';
 import withObservables from '@nozbe/with-observables';
 import AsignaturaSeccion from '../../model/AsignaturaSeccion';
 import { database } from '../../model/index';
+import { Card, EmptyState } from '../../components/ui';
+import { ClipboardCheck, Clock, ChevronRight, Inbox } from 'lucide-react-native';
 
 const PeriodoLabel = ({ periodoId }: { periodoId: string }) => {
     const [label, setLabel] = useState('');
@@ -15,37 +17,63 @@ const PeriodoLabel = ({ periodoId }: { periodoId: string }) => {
         }).catch(() => {});
     }, [periodoId]);
     if (!label) return null;
-    return <Text className="text-gray-400 text-xs mt-1">Periodo: {label}</Text>;
+    return (
+        <Text className="text-xs text-surface-400 mt-1" style={{ fontFamily: 'Inter_400Regular' }}>
+            {label}
+        </Text>
+    );
 };
 
 const AttendanceItem = ({ asignacion, seccion, asignatura, onPress, onHistory }: any) => (
-    <View className="bg-white mb-3 rounded-lg shadow-sm border border-gray-100">
+    <Card className="mb-3">
         <TouchableOpacity
-            className="p-4"
+            className="pb-3"
             onPress={() => onPress(asignacion, asignatura, seccion)}
+            activeOpacity={0.7}
         >
-            <Text className="text-lg font-bold text-gray-800">{asignatura?.nombre || 'Sin asignatura'}</Text>
-            <Text className="text-gray-600">
-                {seccion?.curso || ''} - {seccion?.seccion || ''} ({seccion?.jornada || ''})
-            </Text>
-            <PeriodoLabel periodoId={seccion?._raw?.periodo_id || seccion?.periodoId} />
+            <View className="flex-row items-center justify-between">
+                <View className="flex-1">
+                    <Text
+                        className="text-base text-surface-800"
+                        style={{ fontFamily: 'Inter_600SemiBold' }}
+                    >
+                        {asignatura?.nombre || 'Sin asignatura'}
+                    </Text>
+                    <Text
+                        className="text-sm text-surface-500 mt-0.5"
+                        style={{ fontFamily: 'Inter_400Regular' }}
+                    >
+                        {seccion?.curso || ''} - {seccion?.seccion || ''} ({seccion?.jornada || ''})
+                    </Text>
+                    <PeriodoLabel periodoId={seccion?._raw?.periodo_id || seccion?.periodoId} />
+                </View>
+                <ChevronRight size={20} color="#d6d3d1" />
+            </View>
         </TouchableOpacity>
-        <View className="flex-row border-t border-gray-100">
+
+        <View className="flex-row border-t border-surface-100 pt-3 -mx-4 px-4">
             <TouchableOpacity
-                className="flex-1 py-3 items-center"
+                className="flex-1 flex-row items-center justify-center py-2 bg-primary-50 rounded-xl mr-1.5"
                 onPress={() => onPress(asignacion, asignatura, seccion)}
+                activeOpacity={0.7}
             >
-                <Text className="text-blue-600 font-medium text-sm">Tomar Asistencia</Text>
+                <ClipboardCheck size={16} color="#16a34a" />
+                <Text className="text-primary-700 text-sm ml-1.5" style={{ fontFamily: 'Inter_600SemiBold' }}>
+                    Pasar lista
+                </Text>
             </TouchableOpacity>
-            <View className="w-px bg-gray-100" />
             <TouchableOpacity
-                className="flex-1 py-3 items-center"
+                className="flex-1 flex-row items-center justify-center py-2 bg-surface-50 rounded-xl ml-1.5"
                 onPress={() => onHistory(asignacion, asignatura, seccion)}
+                activeOpacity={0.7}
             >
-                <Text className="text-gray-500 font-medium text-sm">Historial</Text>
+                <Clock size={16} color="#78716c" />
+                <Text className="text-surface-600 text-sm ml-1.5" style={{ fontFamily: 'Inter_500Medium' }}>
+                    Historial
+                </Text>
             </TouchableOpacity>
         </View>
-    </View>
+    </Card>
 );
 
 const EnhancedAttendanceItem = withObservables(['asignacion'], ({ asignacion }) => ({
@@ -78,33 +106,36 @@ function AttendanceScreen({ asignaciones }: { asignaciones: AsignaturaSeccion[] 
 
     if (!asignaciones) {
         return (
-            <View className="flex-1 justify-center items-center">
-                <ActivityIndicator />
+            <View className="flex-1 justify-center items-center bg-surface-50">
+                <ActivityIndicator size="large" color="#16a34a" />
             </View>
-        )
+        );
     }
 
     return (
-        <SafeAreaView className="flex-1 bg-gray-50 p-4">
-            <Text className="text-2xl font-bold text-gray-800 mb-4 ml-2">Mis Clases</Text>
-            {asignaciones.length === 0 ? (
-                <View className="flex-1 justify-center items-center">
-                    <Text className="text-gray-500 text-lg">No hay clases asignadas.</Text>
-                    <Text className="text-gray-400 text-sm mt-2">Intenta sincronizar nuevamente.</Text>
-                </View>
-            ) : (
-                <FlatList
-                    data={asignaciones}
-                    keyExtractor={(item) => item.id}
-                    renderItem={({ item }) => (
-                        <EnhancedAttendanceItem
-                            asignacion={item}
-                            onPress={handlePress}
-                            onHistory={handleHistory}
-                        />
-                    )}
-                />
-            )}
+        <SafeAreaView className="flex-1 bg-surface-50">
+            <View className="px-5 pt-2">
+                {asignaciones.length === 0 ? (
+                    <EmptyState
+                        icon={<Inbox size={32} color="#a8a29e" />}
+                        title="Sin clases asignadas"
+                        description="Sincroniza tus datos desde el menú para ver tus clases."
+                    />
+                ) : (
+                    <FlatList
+                        data={asignaciones}
+                        keyExtractor={(item) => item.id}
+                        renderItem={({ item }) => (
+                            <EnhancedAttendanceItem
+                                asignacion={item}
+                                onPress={handlePress}
+                                onHistory={handleHistory}
+                            />
+                        )}
+                        showsVerticalScrollIndicator={false}
+                    />
+                )}
+            </View>
         </SafeAreaView>
     );
 }

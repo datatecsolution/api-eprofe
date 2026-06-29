@@ -6,6 +6,8 @@ import com.datatecsolution.eprofe.spring_api.repository.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
@@ -16,6 +18,7 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/api/sync")
 @CrossOrigin(origins = "*")
+@Tag(name = "App Sync", description = "Sincronizacion inicial para la app movil")
 public class AppSyncController {
 
     @Autowired
@@ -39,6 +42,7 @@ public class AppSyncController {
     @Autowired
     private PeriodoRepository periodoRepository;
 
+    @Operation(summary = "Obtener datos iniciales del docente para sincronizacion")
     @Transactional(readOnly = true)
     @GetMapping("/initial/{docenteId}")
     public ResponseEntity<DocenteSyncDTO> getInitialData(@PathVariable Long docenteId) {

@@ -5,6 +5,7 @@ import com.datatecsolution.eprofe.spring_api.model.Docente;
 import com.datatecsolution.eprofe.spring_api.model.Seccion;
 import com.datatecsolution.eprofe.spring_api.model.Asignatura;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 import java.util.List;
@@ -19,4 +20,11 @@ public interface AsignaturaSeccionRepository extends JpaRepository<AsignaturaSec
 
     Optional<AsignaturaSeccion> findByDocenteAndSeccionAndAsignatura(Docente docente, Seccion seccion,
             Asignatura asignatura);
+
+    @Query("SELECT a FROM AsignaturaSeccion a WHERE a.docente = :docente AND a.seccion.periodo.estado = true")
+    List<AsignaturaSeccion> findByDocenteAndPeriodoActivo(Docente docente);
+
+    @Modifying
+    @Query("DELETE FROM AsignaturaSeccion a WHERE a.docente = :docente AND a.seccion.periodo.estado = true")
+    void deleteByDocenteAndPeriodoActivo(Docente docente);
 }

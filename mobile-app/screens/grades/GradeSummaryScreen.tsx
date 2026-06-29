@@ -3,6 +3,8 @@ import { View, Text, FlatList, SafeAreaView, ActivityIndicator, ScrollView } fro
 import { useRoute } from '@react-navigation/native';
 import { Q } from '@nozbe/watermelondb';
 import { useDatabase } from '@nozbe/watermelondb/hooks';
+import { Badge, EmptyState } from '../../components/ui';
+import { Inbox } from 'lucide-react-native';
 
 const PARCIAL_LABELS: Record<number, string> = {
     1: '1er Parcial',
@@ -16,7 +18,7 @@ type StudentSummary = {
     nombre: string;
     apellido: string;
     rne: string;
-    notas: Record<string, number>; // acumulativoId -> nota
+    notas: Record<string, number>;
     total: number;
 };
 
@@ -33,7 +35,6 @@ export default function GradeSummaryScreen() {
     useEffect(() => {
         async function loadData() {
             try {
-                // 1. Get acumulativos for this parcial
                 const acums = await database.get('acumulativos').query(
                     Q.where('asignatura_id', asignaturaId),
                     Q.where('seccion_id', seccionId),
@@ -41,12 +42,10 @@ export default function GradeSummaryScreen() {
                 ).fetch();
                 setAcumulativos(acums);
 
-                // 2. Get matriculas (students) for this section
                 const matriculas = await database.get('matriculas').query(
                     Q.where('seccion_id', seccionId)
                 ).fetch();
 
-                // 3. Fetch all notas for these acumulativos
                 const acumIds = acums.map(a => a.id);
                 let allNotas: any[] = [];
                 if (acumIds.length > 0) {
@@ -55,7 +54,6 @@ export default function GradeSummaryScreen() {
                     ).fetch();
                 }
 
-                // Build nota lookup: alumnoId -> acumulativoId -> nota
                 const notaMap: Record<string, Record<string, number>> = {};
                 allNotas.forEach((n: any) => {
                     const alumnoId = n._raw.alumno_id;
@@ -64,7 +62,6 @@ export default function GradeSummaryScreen() {
                     notaMap[alumnoId][acumId] = n.nota;
                 });
 
-                // 4. Build student summaries
                 const summaries: StudentSummary[] = [];
                 for (const m of matriculas as any[]) {
                     const alumnoId = m._raw.alumno_id;
@@ -81,7 +78,6 @@ export default function GradeSummaryScreen() {
                     });
                 }
 
-                // Sort by apellido
                 summaries.sort((a, b) => a.apellido.localeCompare(b.apellido));
                 setStudents(summaries);
             } catch (e) {
@@ -94,40 +90,67 @@ export default function GradeSummaryScreen() {
     }, []);
 
     if (loading) {
-        return <View className="flex-1 justify-center items-center"><ActivityIndicator size="large" /></View>;
+        return (
+            <View className="flex-1 justify-center items-center bg-surface-50">
+                <ActivityIndicator size="large" color="#16a34a" />
+            </View>
+        );
     }
 
     return (
-        <SafeAreaView className="flex-1 bg-gray-50">
-            <View className="bg-blue-600 p-4 pt-10">
-                <Text className="text-white text-xl font-bold">{nombreClase}</Text>
-                <Text className="text-blue-100">{detalleSeccion} — {PARCIAL_LABELS[parcial]}</Text>
-                <Text className="text-blue-200 text-xs mt-1">Total puntos: {totalPuntos}/100</Text>
+        <SafeAreaView className="flex-1 bg-surface-50">
+            {/* Header */}
+            <View className="bg-white px-5 pt-10 pb-4 border-b border-surface-100">
+                <Text className="text-xl text-surface-900" style={{ fontFamily: 'Inter_700Bold' }}>
+                    {nombreClase}
+                </Text>
+                <View className="flex-row items-center mt-1">
+                    <Text className="text-sm text-surface-400" style={{ fontFamily: 'Inter_400Regular' }}>
+                        {detalleSeccion} — {PARCIAL_LABELS[parcial]}
+                    </Text>
+                    <View className="ml-2">
+                        <Badge label={`${totalPuntos}/100 pts`} variant="info" />
+                    </View>
+                </View>
             </View>
 
             {acumulativos.length === 0 ? (
-                <View className="flex-1 justify-center items-center p-8">
-                    <Text className="text-gray-400 text-lg">No hay evaluaciones en este parcial.</Text>
-                </View>
+                <EmptyState
+                    icon={<Inbox size={32} color="#a8a29e" />}
+                    title="Sin evaluaciones"
+                    description="Crea evaluaciones para ver el resumen."
+                />
             ) : (
-                <ScrollView horizontal className="flex-1">
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-1">
                     <View>
                         {/* Header row */}
-                        <View className="flex-row bg-gray-100 border-b border-gray-300">
-                            <View className="w-48 p-3 border-r border-gray-200">
-                                <Text className="font-bold text-gray-700 text-sm">Alumno</Text>
+                        <View className="flex-row bg-surface-100 border-b border-surface-200">
+                            <View className="w-48 px-4 py-3 border-r border-surface-200">
+                                <Text className="text-xs text-surface-600" style={{ fontFamily: 'Inter_600SemiBold' }}>
+                                    Alumno
+                                </Text>
                             </View>
                             {acumulativos.map((a: any) => (
-                                <View key={a.id} className="w-20 p-2 items-center border-r border-gray-200">
-                                    <Text className="font-bold text-gray-700 text-xs" numberOfLines={2}>
+                                <View key={a.id} className="w-20 px-2 py-3 items-center border-r border-surface-200">
+                                    <Text
+                                        className="text-xs text-surface-600 text-center"
+                                        style={{ fontFamily: 'Inter_600SemiBold' }}
+                                        numberOfLines={2}
+                                    >
                                         {a.descripcion}
                                     </Text>
-                                    <Text className="text-gray-400 text-xs">{a.valor}pts</Text>
+                                    <Text className="text-xs text-surface-400 mt-0.5" style={{ fontFamily: 'Inter_400Regular' }}>
+                                        {a.valor}pts
+                                    </Text>
                                 </View>
                             ))}
-                            <View className="w-20 p-2 items-center bg-blue-50">
-                                <Text className="font-bold text-blue-700 text-xs">Total</Text>
-                                <Text className="text-blue-400 text-xs">{totalPuntos}pts</Text>
+                            <View className="w-20 px-2 py-3 items-center bg-primary-50">
+                                <Text className="text-xs text-primary-700" style={{ fontFamily: 'Inter_700Bold' }}>
+                                    Total
+                                </Text>
+                                <Text className="text-xs text-primary-500 mt-0.5" style={{ fontFamily: 'Inter_400Regular' }}>
+                                    {totalPuntos}pts
+                                </Text>
                             </View>
                         </View>
 
@@ -136,26 +159,35 @@ export default function GradeSummaryScreen() {
                             data={students}
                             keyExtractor={item => item.alumnoId}
                             renderItem={({ item, index }) => (
-                                <View className={`flex-row border-b border-gray-100 ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}>
-                                    <View className="w-48 p-3 border-r border-gray-200 justify-center">
-                                        <Text className="text-gray-800 text-sm font-medium" numberOfLines={1}>
+                                <View className={`flex-row border-b border-surface-100 ${index % 2 === 0 ? 'bg-white' : 'bg-surface-50'}`}>
+                                    <View className="w-48 px-4 py-3 border-r border-surface-100 justify-center">
+                                        <Text
+                                            className="text-sm text-surface-800"
+                                            style={{ fontFamily: 'Inter_500Medium' }}
+                                            numberOfLines={1}
+                                        >
                                             {item.apellido}, {item.nombre}
                                         </Text>
-                                        <Text className="text-gray-400 text-xs">{item.rne}</Text>
                                     </View>
                                     {acumulativos.map((a: any) => {
                                         const nota = item.notas[a.id];
                                         const hasNota = nota !== undefined;
                                         return (
-                                            <View key={a.id} className="w-20 p-2 items-center justify-center border-r border-gray-200">
-                                                <Text className={`text-sm font-bold ${hasNota ? 'text-gray-800' : 'text-gray-300'}`}>
+                                            <View key={a.id} className="w-20 px-2 py-3 items-center justify-center border-r border-surface-100">
+                                                <Text
+                                                    className={`text-sm ${hasNota ? 'text-surface-800' : 'text-surface-300'}`}
+                                                    style={{ fontFamily: 'Inter_600SemiBold' }}
+                                                >
                                                     {hasNota ? nota : '—'}
                                                 </Text>
                                             </View>
                                         );
                                     })}
-                                    <View className="w-20 p-2 items-center justify-center bg-blue-50">
-                                        <Text className={`text-sm font-bold ${item.total > 0 ? 'text-blue-700' : 'text-gray-300'}`}>
+                                    <View className="w-20 px-2 py-3 items-center justify-center bg-primary-50">
+                                        <Text
+                                            className={`text-sm ${item.total > 0 ? 'text-primary-700' : 'text-surface-300'}`}
+                                            style={{ fontFamily: 'Inter_700Bold' }}
+                                        >
                                             {item.total > 0 ? item.total : '—'}
                                         </Text>
                                     </View>

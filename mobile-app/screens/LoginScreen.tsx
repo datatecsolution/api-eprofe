@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, Alert, SafeAreaView } from 'react-native';
+import { View, Text, Alert, SafeAreaView, KeyboardAvoidingView, Platform } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { StatusBar } from 'expo-status-bar';
 import api from '../services/api';
-
+import { Button, Input } from '../components/ui';
+import { User, Lock } from 'lucide-react-native';
 import { SaceWebViewSync } from '../components/SaceWebViewSync';
 
 export default function LoginScreen() {
@@ -16,15 +17,14 @@ export default function LoginScreen() {
 
     async function handleLogin() {
         if (!userSace || !passwordSace) {
-            Alert.alert('Error', 'Por favor ingresa usuario y contraseña');
+            Alert.alert('Campos requeridos', 'Por favor ingresa tu usuario y tu contraseña');
             return;
         }
 
         setLoading(true);
-        setStatusMessage('Conectando con el servidor...');
+        setStatusMessage('Conectando...');
 
         try {
-            // Step 1: Try direct API login (no SACE needed if data exists)
             const response = await api.post('/sace/login', {
                 username: userSace,
                 password: passwordSace,
@@ -34,19 +34,16 @@ export default function LoginScreen() {
             const data = response.data;
 
             if (data.success && data.hasData) {
-                // Docente exists and has synced data → direct login, no SACE needed
-                setStatusMessage('Datos encontrados. Iniciando sesión...');
+                setStatusMessage('Entrando...');
                 await signIn(userSace, passwordSace);
                 return;
             }
 
-            // Docente doesn't have data or doesn't exist → need SACE sync
             setStatusMessage('Conectando con SACE...');
             setShowWebView(true);
 
         } catch (error: any) {
             console.error('Direct login failed, falling back to SACE:', error.message);
-            // API not reachable → try SACE directly
             setStatusMessage('Conectando con SACE...');
             setShowWebView(true);
         }
@@ -58,7 +55,7 @@ export default function LoginScreen() {
         try {
             await signIn(userSace, passwordSace, cookies);
         } catch (error) {
-            Alert.alert('Login Fallido', 'Error de conexión con el banco de datos SACE');
+            Alert.alert('No se pudo ingresar', 'Hubo un error al conectar con SACE. Intenta de nuevo.');
         } finally {
             setLoading(false);
             setStatusMessage('');
@@ -69,49 +66,70 @@ export default function LoginScreen() {
         setShowWebView(false);
         setLoading(false);
         setStatusMessage('');
-        Alert.alert('Error de Inicio', 'SACE no aceptó tus credenciales o el sitio web no respondió. Detalle: ' + error);
+        Alert.alert(
+            'No se pudo conectar',
+            'Verifica que tu usuario y contraseña sean correctos.'
+        );
     };
 
     return (
-        <SafeAreaView className="flex-1 bg-gray-100 justify-center items-center">
+        <SafeAreaView className="flex-1 bg-surface-50">
             <StatusBar style="dark" />
-            <View className="w-4/5 web:max-w-md web:w-full bg-white p-6 rounded-lg shadow-md">
-                <Text className="text-2xl font-bold text-center text-gray-800 mb-6">eProfe Login</Text>
+            <KeyboardAvoidingView
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                className="flex-1 justify-center px-6"
+            >
+                {/* Logo / Brand */}
+                <View className="items-center mb-10">
+                    <View className="bg-primary-600 h-18 w-18 rounded-3xl items-center justify-center mb-4 shadow-button">
+                        <Text className="text-3xl text-white" style={{ fontFamily: 'Inter_700Bold' }}>e</Text>
+                    </View>
+                    <Text className="text-3xl text-surface-900" style={{ fontFamily: 'Inter_700Bold' }}>
+                        eProfe
+                    </Text>
+                    <Text className="text-base text-surface-400 mt-1" style={{ fontFamily: 'Inter_400Regular' }}>
+                        Tu asistente de clases
+                    </Text>
+                </View>
 
-                <Text className="text-gray-600 mb-2">Usuario SACE</Text>
-                <TextInput
-                    className="w-full bg-gray-50 border border-gray-300 rounded-md p-3 mb-4 text-gray-800"
-                    placeholder="Ej: 0801199012345"
-                    value={userSace}
-                    onChangeText={setUserSace}
-                    autoCapitalize="none"
-                />
+                {/* Form */}
+                <View className="web:max-w-md web:w-full web:mx-auto">
+                    <Input
+                        label="Usuario SACE"
+                        placeholder="Ej: 0801199012345"
+                        value={userSace}
+                        onChangeText={setUserSace}
+                        autoCapitalize="none"
+                        icon={<User size={20} color="#a8a29e" />}
+                    />
 
-                <Text className="text-gray-600 mb-2">Contraseña SACE</Text>
-                <TextInput
-                    className="w-full bg-gray-50 border border-gray-300 rounded-md p-3 mb-6 text-gray-800"
-                    placeholder="********"
-                    value={passwordSace}
-                    onChangeText={setPasswordSace}
-                    secureTextEntry
-                />
+                    <Input
+                        label="Contraseña"
+                        placeholder="Tu contraseña de SACE"
+                        value={passwordSace}
+                        onChangeText={setPasswordSace}
+                        secureTextEntry
+                        icon={<Lock size={20} color="#a8a29e" />}
+                    />
 
-                <TouchableOpacity
-                    className="w-full bg-blue-600 p-4 rounded-md items-center"
-                    onPress={handleLogin}
-                    disabled={loading}
-                >
-                    {loading ? (
-                        <View className="items-center">
-                            <ActivityIndicator color="#fff" />
-                            {statusMessage ? (
-                                <Text className="text-white text-xs mt-2">{statusMessage}</Text>
-                            ) : null}
-                        </View>
-                    ) : (
-                        <Text className="text-white font-bold text-lg">Ingresar</Text>
+                    <View className="mt-2">
+                        <Button
+                            title={loading ? statusMessage : 'Ingresar'}
+                            onPress={handleLogin}
+                            loading={loading}
+                            size="lg"
+                        />
+                    </View>
+
+                    {loading && statusMessage && (
+                        <Text
+                            className="text-sm text-surface-400 text-center mt-4"
+                            style={{ fontFamily: 'Inter_400Regular' }}
+                        >
+                            {statusMessage}
+                        </Text>
                     )}
-                </TouchableOpacity>
+                </View>
 
                 {showWebView && (
                     <SaceWebViewSync
@@ -120,7 +138,7 @@ export default function LoginScreen() {
                         onSyncError={handleSaceError}
                     />
                 )}
-            </View>
+            </KeyboardAvoidingView>
         </SafeAreaView>
     );
 }

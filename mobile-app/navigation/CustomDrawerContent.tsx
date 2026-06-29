@@ -5,6 +5,8 @@ import { useAuth } from '../context/AuthContext';
 import { useInitialSync } from '../hooks/useInitialSync';
 import { database } from '../model/index';
 import { Q } from '@nozbe/watermelondb';
+import { Avatar } from '../components/ui';
+import { RefreshCw, LogOut } from 'lucide-react-native';
 import Toast from 'react-native-toast-message';
 
 export default function CustomDrawerContent(props: any) {
@@ -13,7 +15,8 @@ export default function CustomDrawerContent(props: any) {
     const [syncing, setSyncing] = useState(false);
     const [pendingCount, setPendingCount] = useState(0);
 
-    // Count pending (unuploaded) records
+    const fullName = `${user?.nombre || ''} ${user?.apellido || ''}`.trim();
+
     const countPending = async () => {
         try {
             const asistencias = await database.get('asistencias').query(Q.where('uploaded', false)).fetchCount();
@@ -33,41 +36,22 @@ export default function CustomDrawerContent(props: any) {
         if (!user) return;
         setSyncing(true);
         try {
-            // 1. Push Changes first (always push before pull to avoid losing data)
             const pushSuccess = await pushData();
             if (!pushSuccess) {
-                Toast.show({
-                    type: 'error',
-                    text1: 'Error',
-                    text2: 'Falló la subida de datos. Verifique su conexión.'
-                });
+                Toast.show({ type: 'error', text1: 'Error', text2: 'No se pudieron subir los datos.' });
                 setSyncing(false);
                 return;
             }
 
-            // 2. Pull Updates
             const pullSuccess = await pullData(user.id, user.cookies);
             if (!pullSuccess) {
-                Toast.show({
-                    type: 'info',
-                    text1: 'Advertencia',
-                    text2: 'Datos subidos, pero falló la descarga.'
-                });
+                Toast.show({ type: 'info', text1: 'Aviso', text2: 'Datos subidos, pero no se pudo descargar.' });
             } else {
-                Toast.show({
-                    type: 'success',
-                    text1: 'Éxito',
-                    text2: 'Sincronización completada correctamente.'
-                });
+                Toast.show({ type: 'success', text1: 'Listo', text2: 'Todo sincronizado.' });
             }
-
         } catch (error) {
             console.error(error);
-            Toast.show({
-                type: 'error',
-                text1: 'Error',
-                text2: 'Ocurrió un error inesperado.'
-            });
+            Toast.show({ type: 'error', text1: 'Error', text2: 'Algo salió mal.' });
         } finally {
             setSyncing(false);
             countPending();
@@ -78,15 +62,12 @@ export default function CustomDrawerContent(props: any) {
         if (pendingCount > 0) {
             Alert.alert(
                 'Datos sin sincronizar',
-                `Tienes ${pendingCount} registro(s) sin subir al servidor. Si cierras sesión se perderán.\n\n¿Deseas sincronizar antes de salir?`,
+                `Tienes ${pendingCount} registro(s) sin subir. Si cierras sesión se perderán.`,
                 [
                     { text: 'Cancelar', style: 'cancel' },
                     {
                         text: 'Sincronizar y salir',
-                        onPress: async () => {
-                            await pushData();
-                            await signOut();
-                        },
+                        onPress: async () => { await pushData(); await signOut(); },
                     },
                     {
                         text: 'Salir sin sincronizar',
@@ -98,10 +79,10 @@ export default function CustomDrawerContent(props: any) {
         } else {
             Alert.alert(
                 'Cerrar sesión',
-                '¿Estás seguro que deseas cerrar sesión?',
+                '¿Seguro que deseas salir?',
                 [
                     { text: 'Cancelar', style: 'cancel' },
-                    { text: 'Cerrar sesión', style: 'destructive', onPress: () => signOut() },
+                    { text: 'Salir', style: 'destructive', onPress: () => signOut() },
                 ]
             );
         }
@@ -109,42 +90,67 @@ export default function CustomDrawerContent(props: any) {
 
     return (
         <SafeAreaView className="flex-1 bg-white">
-            <View className="p-4 border-b border-gray-100 bg-blue-600 pt-10">
-                <View className="h-16 w-16 bg-white rounded-full items-center justify-center mb-3">
-                    <Text className="text-blue-600 text-2xl font-bold">
-                        {user?.nombre?.charAt(0) || 'U'}
-                    </Text>
-                </View>
-                <Text className="text-white text-lg font-bold">{user?.nombre} {user?.apellido}</Text>
-                <Text className="text-blue-100 text-sm">{user?.email || user?.userSace}</Text>
+            {/* Profile header */}
+            <View className="px-5 pt-10 pb-5 border-b border-surface-100">
+                <Avatar name={fullName} size="lg" />
+                <Text
+                    className="text-lg text-surface-900 mt-3"
+                    style={{ fontFamily: 'Inter_700Bold' }}
+                >
+                    {fullName}
+                </Text>
+                <Text
+                    className="text-sm text-surface-400 mt-0.5"
+                    style={{ fontFamily: 'Inter_400Regular' }}
+                >
+                    {user?.email || user?.userSace}
+                </Text>
             </View>
 
-            <DrawerContentScrollView {...props}>
+            {/* Nav items */}
+            <DrawerContentScrollView {...props} contentContainerStyle={{ paddingTop: 8 }}>
                 <DrawerItemList {...props} />
             </DrawerContentScrollView>
 
-            <View className="p-4 border-t border-gray-100">
+            {/* Footer actions */}
+            <View className="px-4 pb-6 pt-2 border-t border-surface-100">
+                {/* Sync button */}
                 <TouchableOpacity
-                    className={`flex-row items-center justify-center p-3 rounded-lg mb-3 ${syncing ? 'bg-gray-100' : 'bg-blue-50'}`}
+                    className={`flex-row items-center justify-center py-3.5 rounded-2xl mb-3 ${syncing ? 'bg-surface-100' : 'bg-primary-50'}`}
                     onPress={handleSync}
                     disabled={syncing}
+                    activeOpacity={0.7}
                 >
-                    {syncing ? <ActivityIndicator size="small" color="#2563eb" /> : null}
-                    <Text className={`font-bold ml-2 ${syncing ? 'text-gray-500' : 'text-blue-600'}`}>
-                        {syncing ? 'Sincronizando...' : 'Sincronizar Datos'}
+                    {syncing ? (
+                        <ActivityIndicator size="small" color="#16a34a" />
+                    ) : (
+                        <RefreshCw size={18} color="#16a34a" />
+                    )}
+                    <Text
+                        className={`ml-2 ${syncing ? 'text-surface-400' : 'text-primary-700'}`}
+                        style={{ fontFamily: 'Inter_600SemiBold' }}
+                    >
+                        {syncing ? 'Sincronizando...' : 'Sincronizar'}
                     </Text>
                     {pendingCount > 0 && !syncing && (
-                        <View className="bg-red-500 rounded-full w-6 h-6 items-center justify-center ml-2">
-                            <Text className="text-white text-xs font-bold">{pendingCount}</Text>
+                        <View className="bg-danger rounded-full min-w-[22px] h-[22px] items-center justify-center ml-2 px-1.5">
+                            <Text className="text-white text-xs" style={{ fontFamily: 'Inter_700Bold' }}>
+                                {pendingCount}
+                            </Text>
                         </View>
                     )}
                 </TouchableOpacity>
 
+                {/* Logout */}
                 <TouchableOpacity
-                    className="p-3 rounded-lg bg-red-50 items-center"
+                    className="flex-row items-center justify-center py-3.5 rounded-2xl"
                     onPress={handleSignOut}
+                    activeOpacity={0.7}
                 >
-                    <Text className="text-red-600 font-bold">Cerrar Sesión</Text>
+                    <LogOut size={18} color="#ef4444" />
+                    <Text className="text-danger ml-2" style={{ fontFamily: 'Inter_600SemiBold' }}>
+                        Cerrar sesión
+                    </Text>
                 </TouchableOpacity>
             </View>
         </SafeAreaView>

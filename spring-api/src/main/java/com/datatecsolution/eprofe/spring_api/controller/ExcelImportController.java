@@ -5,6 +5,8 @@ import com.datatecsolution.eprofe.spring_api.repository.DocenteRepository;
 import com.datatecsolution.eprofe.spring_api.service.ExcelImportService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -14,6 +16,7 @@ import java.util.Optional;
 @RestController
 @RequestMapping("/api/excel")
 @CrossOrigin(origins = "*")
+@Tag(name = "Excel Import", description = "Importacion de archivos Excel del SACE")
 public class ExcelImportController {
 
     @Autowired
@@ -22,6 +25,7 @@ public class ExcelImportController {
     @Autowired
     private DocenteRepository docenteRepository;
 
+    @Operation(summary = "Subir y procesar archivo Excel del SACE")
     @PostMapping("/upload")
     public ResponseEntity<?> uploadFile(@RequestParam("file") MultipartFile file,
             @RequestParam("docenteId") Long docenteId) {

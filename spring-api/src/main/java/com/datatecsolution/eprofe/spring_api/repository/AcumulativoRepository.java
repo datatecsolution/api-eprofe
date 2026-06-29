@@ -16,4 +16,27 @@ public interface AcumulativoRepository extends JpaRepository<Acumulativo, Long> 
     List<Acumulativo> findByAsignaturaIdAndSeccionId(@Param("asignaturaId") Long asignaturaId, @Param("seccionId") Long seccionId);
 
     Optional<Acumulativo> findByMovilId(Integer movilId);
+
+    @Query("SELECT DISTINCT a FROM Acumulativo a " +
+           "JOIN AsignaturaSeccion ase ON ase.asignatura.id = a.asignatura.id AND ase.seccion.id = a.seccion.id " +
+           "WHERE ase.docente.id = :docenteId " +
+           "ORDER BY a.id DESC")
+    List<Acumulativo> findByDocenteId(@Param("docenteId") Long docenteId);
+
+    @Query("SELECT DISTINCT a FROM Acumulativo a " +
+           "JOIN AsignaturaSeccion ase ON ase.asignatura.id = a.asignatura.id AND ase.seccion.id = a.seccion.id " +
+           "WHERE ase.docente.id = :docenteId AND ase.seccion.id = :seccionId " +
+           "ORDER BY a.id DESC")
+    List<Acumulativo> findByDocenteIdAndSeccionId(@Param("docenteId") Long docenteId, @Param("seccionId") Long seccionId);
+
+    @Query("SELECT DISTINCT a FROM Acumulativo a " +
+           "JOIN AsignaturaSeccion ase ON ase.asignatura.id = a.asignatura.id AND ase.seccion.id = a.seccion.id " +
+           "WHERE ase.docente.id = :docenteId AND a.seccion.id = :seccionId " +
+           "AND a.parcial = :parcial AND a.asignatura.id = :asignaturaId " +
+           "ORDER BY a.id DESC")
+    List<Acumulativo> findByDocenteSeccionParcialAsignatura(
+            @Param("docenteId") Long docenteId,
+            @Param("seccionId") Long seccionId,
+            @Param("parcial") Integer parcial,
+            @Param("asignaturaId") Long asignaturaId);
 }

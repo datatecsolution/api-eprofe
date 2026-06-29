@@ -1,33 +1,45 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, TextInput, TouchableOpacity, SafeAreaView, ActivityIndicator, Alert, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, FlatList, TextInput, SafeAreaView, ActivityIndicator, Alert, KeyboardAvoidingView, Platform } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { withDatabase } from '@nozbe/watermelondb/DatabaseProvider';
 import { Q } from '@nozbe/watermelondb';
 import Matricula from '../../model/Matricula';
 import NotaAcumulativo from '../../model/NotaAcumulativo';
+import { Avatar, Button, Badge } from '../../components/ui';
 import Toast from 'react-native-toast-message';
 
-const StudentGradeRow = ({ matricula, grade, maxDate, onChangeGrade }: any) => {
+const StudentGradeRow = ({ matricula, grade, maxGrade, onChangeGrade }: any) => {
     const [alumno, setAlumno] = useState<any>(null);
 
     useEffect(() => {
         matricula.alumno.fetch().then(setAlumno);
     }, []);
 
-    if (!alumno) return <View className="h-12" />;
+    if (!alumno) return <View className="h-16" />;
+
+    const fullName = `${alumno.nombre} ${alumno.apellido}`;
 
     return (
-        <View className="flex-row items-center justify-between bg-white p-3 mb-2 border-b border-gray-100">
-            <View className="flex-1">
-                <Text className="text-base text-gray-800 font-medium">{alumno.nombre} {alumno.apellido}</Text>
-                <Text className="text-gray-500 text-xs">{alumno.rne || 'No RNE'}</Text>
+        <View className="flex-row items-center bg-white px-5 py-3 border-b border-surface-100">
+            <Avatar name={fullName} size="sm" />
+            <View className="flex-1 ml-3">
+                <Text
+                    className="text-base text-surface-800"
+                    style={{ fontFamily: 'Inter_500Medium' }}
+                    numberOfLines={1}
+                >
+                    {fullName}
+                </Text>
             </View>
             <TextInput
-                className="border border-gray-300 rounded w-20 p-2 text-center text-lg font-bold"
+                className="bg-surface-50 border-2 border-surface-200 rounded-xl w-20 py-2.5 text-center text-lg text-surface-800"
+                style={{ fontFamily: 'Inter_700Bold' }}
                 value={grade}
                 onChangeText={(text) => onChangeGrade(matricula.id, text)}
                 keyboardType="numeric"
                 maxLength={5}
+                placeholderTextColor="#d6d3d1"
+                placeholder="—"
             />
         </View>
     );
@@ -50,47 +62,26 @@ function GradeDetailScreen({ database }: { database: any }) {
                 setAcumulativo(acumRecord);
 
                 const seccion = await acumRecord.seccion.fetch();
-
-                // Fetch Students (Matriculas)
                 const matriculasData = await database.get('matriculas')
                     .query(Q.where('seccion_id', seccion.id))
                     .fetch();
-
                 setMatriculas(matriculasData);
 
-                // Fetch Existing Grades
                 const existingGrades = await database.get('notas_acumulativos')
                     .query(Q.where('acumulativo_id', acumulativoId))
                     .fetch();
 
-                const initialMap: any = {};
-                // Pre-fill with existing grades
-                existingGrades.forEach((nota: NotaAcumulativo) => {
-                    // Need to find which matricula this matches. Nota has alumno_id.
-                    // Matricula also has alumno_id.
-                    // Mapping logic:
-                    // We need a map of alumno_id -> grade, BUT UI renders by matricula.
-                    // Let's store by alumnoId for easier lookup, or map matricula to alumnoId
-                });
-
-                // Better strategy: Map alumnoId -> Grade
                 const alumnoGradeMap: any = {};
                 existingGrades.forEach((n: any) => {
                     alumnoGradeMap[n._raw.alumno_id] = n.nota.toString();
                 });
 
-                // Now map to matricula ID for the UI state
                 const uiMap: any = {};
                 for (const m of matriculasData as any[]) {
                     const alumnoId = m._raw.alumno_id;
-                    if (alumnoGradeMap[alumnoId]) {
-                        uiMap[m.id] = alumnoGradeMap[alumnoId];
-                    } else {
-                        uiMap[m.id] = '';
-                    }
+                    uiMap[m.id] = alumnoGradeMap[alumnoId] || '';
                 }
                 setGradesMap(uiMap);
-
             } catch (error) {
                 console.error(error);
                 Alert.alert('Error', 'No se pudieron cargar los datos');
@@ -102,7 +93,6 @@ function GradeDetailScreen({ database }: { database: any }) {
     }, [acumulativoId]);
 
     const handleGradeChange = (matriculaId: string, text: string) => {
-        // Validate number
         setGradesMap(prev => ({ ...prev, [matriculaId]: text }));
     };
 
@@ -112,7 +102,6 @@ function GradeDetailScreen({ database }: { database: any }) {
             await database.write(async () => {
                 const notesCollection = database.get('notas_acumulativos');
 
-                // For each matricula, upsert grade
                 for (const m of matriculas) {
                     const gradeStr = gradesMap[m.id];
                     if (!gradeStr) continue;
@@ -122,8 +111,6 @@ function GradeDetailScreen({ database }: { database: any }) {
                     if (notaVal > (acumulativo as any).valor) continue;
                     const alumnoId = (m as any)._raw.alumno_id;
 
-                    // Check if exists (Naive approach: Query inside loop - slow but safe for now)
-                    // Better: Load all again or filter from previous `existingGrades`
                     const existing = await notesCollection.query(
                         Q.where('acumulativo_id', acumulativoId),
                         Q.where('alumno_id', alumnoId)
@@ -144,25 +131,40 @@ function GradeDetailScreen({ database }: { database: any }) {
                     }
                 }
             });
-            Toast.show({ type: 'success', text1: 'Éxito', text2: 'Notas guardadas' });
+            Toast.show({ type: 'success', text1: 'Listo', text2: 'Notas guardadas' });
             navigation.goBack();
-
         } catch (error) {
             console.error(error);
-            Toast.show({ type: 'error', text1: 'Error', text2: 'Falló al guardar notas' });
+            Toast.show({ type: 'error', text1: 'Error', text2: 'No se pudieron guardar las notas' });
         } finally {
             setLoading(false);
         }
     };
 
-    if (loading) return <View className="flex-1 justify-center items-center"><ActivityIndicator size="large" /></View>;
+    if (loading) {
+        return (
+            <View className="flex-1 justify-center items-center bg-surface-50">
+                <ActivityIndicator size="large" color="#16a34a" />
+            </View>
+        );
+    }
 
     return (
-        <SafeAreaView className="flex-1 bg-gray-50">
+        <SafeAreaView className="flex-1 bg-surface-50">
             <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} className="flex-1">
-                <View className="bg-blue-600 p-4 pt-10">
-                    <Text className="text-white text-xl font-bold">{descripcion}</Text>
-                    <Text className="text-blue-100">Ingreso de Notas — Máximo: {acumulativo?.valor || 0} pts</Text>
+                {/* Header */}
+                <View className="bg-white px-5 pt-10 pb-4 border-b border-surface-100">
+                    <View className="flex-row items-center justify-between">
+                        <View className="flex-1">
+                            <Text className="text-xl text-surface-900" style={{ fontFamily: 'Inter_700Bold' }}>
+                                {descripcion}
+                            </Text>
+                            <Text className="text-sm text-surface-400 mt-0.5" style={{ fontFamily: 'Inter_400Regular' }}>
+                                Ingreso de notas
+                            </Text>
+                        </View>
+                        <Badge label={`Máx ${acumulativo?.valor || 0} pts`} variant="info" />
+                    </View>
                 </View>
 
                 <FlatList
@@ -172,19 +174,15 @@ function GradeDetailScreen({ database }: { database: any }) {
                         <StudentGradeRow
                             matricula={item}
                             grade={gradesMap[item.id]}
+                            maxGrade={acumulativo?.valor || 0}
                             onChangeGrade={handleGradeChange}
                         />
                     )}
                     contentContainerStyle={{ paddingBottom: 100 }}
                 />
 
-                <View className="absolute bottom-0 w-full p-4 bg-white border-t border-gray-200">
-                    <TouchableOpacity
-                        className="bg-blue-600 p-4 rounded-lg items-center"
-                        onPress={saveGrades}
-                    >
-                        <Text className="text-white font-bold text-lg">Guardar Notas</Text>
-                    </TouchableOpacity>
+                <View className="absolute bottom-0 w-full px-5 py-4 bg-white border-t border-surface-100">
+                    <Button title="Guardar Notas" onPress={saveGrades} size="lg" />
                 </View>
             </KeyboardAvoidingView>
         </SafeAreaView>

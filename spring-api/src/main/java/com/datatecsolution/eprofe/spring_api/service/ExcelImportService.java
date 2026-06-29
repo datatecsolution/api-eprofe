@@ -18,6 +18,7 @@ import java.nio.file.Paths;
 import java.time.Year;
 import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -42,6 +43,8 @@ public class ExcelImportService {
     private DocenteRepository docenteRepository;
     @Autowired
     private AsignaturaSeccionRepository asignaturaSeccionRepository;
+    @Autowired
+    private PeriodoRepository periodoRepository;
 
     /**
      * Resultado del procesamiento de un archivo Excel.
@@ -180,23 +183,41 @@ public class ExcelImportService {
             }
         }
 
-        // Logic to find or create Seccion (simplified for now, assumes current period)
-        // In real impl, need to fetch active Periodo
+        // Obtener periodos activos ordenados por ID DESC (pueden ser hasta 2)
+        List<Periodo> periodosActivos = periodoRepository.findByEstadoTrueOrderByIdDesc();
 
-        Optional<Seccion> existingSeccion = seccionRepository.findByCursoAndSeccionAndJornadaAndCentro(curso,
-                seccionGrupo, jornada, centro);
+        if (periodosActivos.isEmpty()) {
+            throw new RuntimeException("No hay periodos activos configurados en el sistema.");
+        }
+
+        // Buscar sección en el primer periodo activo (más reciente)
+        Optional<Seccion> existingSeccion = seccionRepository
+                .findByCursoAndSeccionAndJornadaAndCentroAndPeriodo(
+                        curso, seccionGrupo, jornada, centro, periodosActivos.get(0));
 
         if (existingSeccion.isPresent()) {
             return existingSeccion.get();
         }
 
+        // Si hay segundo periodo activo, buscar ahí
+        if (periodosActivos.size() > 1) {
+            existingSeccion = seccionRepository
+                    .findByCursoAndSeccionAndJornadaAndCentroAndPeriodo(
+                            curso, seccionGrupo, jornada, centro, periodosActivos.get(1));
+
+            if (existingSeccion.isPresent()) {
+                return existingSeccion.get();
+            }
+        }
+
+        // No existe en ningún periodo activo → crear en el más reciente
         Seccion newSeccion = new Seccion();
         newSeccion.setCurso(curso);
         newSeccion.setSeccion(seccionGrupo);
         newSeccion.setJornada(jornada);
         newSeccion.setCentro(centro);
         newSeccion.setModalidad(modalidad);
-        // Note: Periodo integration needed here
+        newSeccion.setPeriodo(periodosActivos.get(0));
 
         return seccionRepository.save(newSeccion);
     }

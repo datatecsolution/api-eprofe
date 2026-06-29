@@ -66,7 +66,11 @@ public class SaceSyncService {
             throw new RuntimeException("No files received from SACE Webview.");
         }
 
-        // 3. Decode Base64, Process Files, and Store Originals on Disk
+        // 3. Borrar asignaciones del docente en periodos activos antes de re-importar
+        //    Replica: DELETE FROM asignaturas_secciones WHERE docente_id=? AND seccion.periodo.estado=1
+        asignaturaSeccionRepository.deleteByDocenteAndPeriodoActivo(docente);
+
+        // 4. Decode Base64, Process Files, and Store Originals on Disk
         for (Map<String, String> entry : fileEntries) {
             String base64Content = entry.get("base64");
             if (base64Content != null && !base64Content.isEmpty()) {
@@ -75,8 +79,8 @@ public class SaceSyncService {
             }
         }
 
-        // 5. Gather all related data for the offline mobile app
-        List<AsignaturaSeccion> asignaciones = asignaturaSeccionRepository.findByDocente(docente);
+        // 5. Gather all related data for the offline mobile app (solo periodos activos)
+        List<AsignaturaSeccion> asignaciones = asignaturaSeccionRepository.findByDocenteAndPeriodoActivo(docente);
         List<Seccion> secciones = asignaciones.stream()
                 .map(AsignaturaSeccion::getSeccion)
                 .distinct()
