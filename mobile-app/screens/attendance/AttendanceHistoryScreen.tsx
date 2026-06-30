@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, TouchableOpacity, SafeAreaView, ActivityIndicator, Alert } from 'react-native';
-import { useRoute, useNavigation } from '@react-navigation/native';
 import { withDatabase } from '@nozbe/watermelondb/DatabaseProvider';
 import { Q } from '@nozbe/watermelondb';
 import { Card, EmptyState } from '../../components/ui';
@@ -20,9 +19,7 @@ interface AttendanceSummary {
     excusados: number;
 }
 
-function AttendanceHistoryScreen({ database }: { database: any }) {
-    const route = useRoute<any>();
-    const navigation = useNavigation<any>();
+function AttendanceHistoryScreen({ database, route, navigation }: { database: any; route: any; navigation: any }) {
     const { asignaturaSeccionId, nombreClase, detalleSeccion, asignaturaId, seccionId } = route.params;
 
     const [loading, setLoading] = useState(true);
@@ -119,16 +116,7 @@ function AttendanceHistoryScreen({ database }: { database: any }) {
 
     return (
         <SafeAreaView className="flex-1 bg-surface-50">
-            {/* Header */}
-            <View className="bg-white px-5 pt-10 pb-4 border-b border-surface-100">
-                <Text className="text-xl text-surface-900" style={{ fontFamily: 'Inter_700Bold' }}>
-                    {nombreClase}
-                </Text>
-                <Text className="text-sm text-surface-400 mt-0.5" style={{ fontFamily: 'Inter_400Regular' }}>
-                    {detalleSeccion} — Historial
-                </Text>
-            </View>
-
+            {/* Header nativo del stack (título nombreClase — Historial) */}
             {history.length === 0 ? (
                 <EmptyState
                     icon={<Inbox size={32} color="#a8a29e" />}

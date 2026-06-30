@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, SafeAreaView, ActivityIndicator, ScrollView } from 'react-native';
-import { useRoute } from '@react-navigation/native';
 import { Q } from '@nozbe/watermelondb';
 import { useDatabase } from '@nozbe/watermelondb/hooks';
 import { Badge, EmptyState } from '../../components/ui';
@@ -22,8 +21,7 @@ type StudentSummary = {
     total: number;
 };
 
-export default function GradeSummaryScreen() {
-    const route = useRoute<any>();
+export default function GradeSummaryScreen({ navigation, route }: any) {
     const database = useDatabase();
     const { asignaturaId, seccionId, nombreClase, detalleSeccion, parcial } = route.params;
 
@@ -99,19 +97,13 @@ export default function GradeSummaryScreen() {
 
     return (
         <SafeAreaView className="flex-1 bg-surface-50">
-            {/* Header */}
-            <View className="bg-white px-5 pt-10 pb-4 border-b border-surface-100">
-                <Text className="text-xl text-surface-900" style={{ fontFamily: 'Inter_700Bold' }}>
-                    {nombreClase}
+            {/* Título nombreClase/detalleSeccion + botón Inicio van en el header nativo del stack.
+                Barra fina con el parcial y el total de puntos. */}
+            <View className="bg-white px-5 py-3 border-b border-surface-100 flex-row items-center justify-between">
+                <Text className="text-sm text-surface-600" style={{ fontFamily: 'Inter_600SemiBold' }}>
+                    {PARCIAL_LABELS[parcial]}
                 </Text>
-                <View className="flex-row items-center mt-1">
-                    <Text className="text-sm text-surface-400" style={{ fontFamily: 'Inter_400Regular' }}>
-                        {detalleSeccion} — {PARCIAL_LABELS[parcial]}
-                    </Text>
-                    <View className="ml-2">
-                        <Badge label={`${totalPuntos}/100 pts`} variant="info" />
-                    </View>
-                </View>
+                <Badge label={`${totalPuntos}/100 pts`} variant="info" />
             </View>
 
             {acumulativos.length === 0 ? (

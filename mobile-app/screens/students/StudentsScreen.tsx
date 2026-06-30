@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, TextInput, TouchableOpacity, ActivityIndicator, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation, DrawerActions } from '@react-navigation/native';
+import { DrawerActions } from '@react-navigation/native';
 import { useDatabase } from '@nozbe/watermelondb/hooks';
 import { Q } from '@nozbe/watermelondb';
 import Alumno from '../../model/Alumno';
@@ -29,8 +29,7 @@ const StudentRow = ({ alumno, seccionLabel, onPress }: { alumno: Alumno; seccion
 
 type SeccionOption = { id: string; label: string };
 
-export default function StudentsScreen() {
-    const navigation = useNavigation<any>();
+export default function StudentsScreen({ navigation }: any) {
     const database = useDatabase();
     const [search, setSearch] = useState('');
     const [secciones, setSecciones] = useState<SeccionOption[]>([]);
@@ -97,9 +96,10 @@ export default function StudentsScreen() {
         navigation.navigate('StudentDetail', { alumnoId: alumno.id });
     };
 
+    const q = search.toLowerCase();
     const filteredAlumnos = alumnos.filter(a =>
-        a.nombre.toLowerCase().includes(search.toLowerCase()) ||
-        a.apellido.toLowerCase().includes(search.toLowerCase())
+        (a.nombre ?? '').toLowerCase().includes(q) ||
+        (a.apellido ?? '').toLowerCase().includes(q)
     );
 
     return (
@@ -133,14 +133,18 @@ export default function StudentsScreen() {
                 {/* Chips de sección */}
                 {secciones.length > 0 && (
                     <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-4 -mx-1 grow-0">
+                        {/* className constante + style inline para el estado activo (evita el bug de
+                            css-interop al cambiar className dinámico tras el render inicial; ver
+                            selector de parcial en ClassGradesScreen). */}
                         <TouchableOpacity
-                            className={`px-[15px] py-2 mx-1 rounded-xl ${!selectedSeccion ? 'bg-primary-600' : 'bg-surface-100'}`}
+                            className="px-[15px] py-2 mx-1 rounded-xl"
+                            style={{ backgroundColor: !selectedSeccion ? '#16a34a' : '#f5f5f4' }}
                             onPress={() => setSelectedSeccion(null)}
                             activeOpacity={0.7}
                         >
                             <Text
-                                className={`text-[13px] ${!selectedSeccion ? 'text-white' : 'text-surface-600'}`}
-                                style={{ fontFamily: !selectedSeccion ? 'Inter_600SemiBold' : 'Inter_500Medium' }}
+                                className="text-[13px]"
+                                style={{ color: !selectedSeccion ? '#ffffff' : '#57534e', fontFamily: !selectedSeccion ? 'Inter_600SemiBold' : 'Inter_500Medium' }}
                             >
                                 Todos
                             </Text>
@@ -150,13 +154,14 @@ export default function StudentsScreen() {
                             return (
                                 <TouchableOpacity
                                     key={s.id}
-                                    className={`px-[15px] py-2 mx-1 rounded-xl ${active ? 'bg-primary-600' : 'bg-surface-100'}`}
+                                    className="px-[15px] py-2 mx-1 rounded-xl"
+                                    style={{ backgroundColor: active ? '#16a34a' : '#f5f5f4' }}
                                     onPress={() => setSelectedSeccion(s.id)}
                                     activeOpacity={0.7}
                                 >
                                     <Text
-                                        className={`text-[13px] ${active ? 'text-white' : 'text-surface-600'}`}
-                                        style={{ fontFamily: active ? 'Inter_600SemiBold' : 'Inter_500Medium' }}
+                                        className="text-[13px]"
+                                        style={{ color: active ? '#ffffff' : '#57534e', fontFamily: active ? 'Inter_600SemiBold' : 'Inter_500Medium' }}
                                     >
                                         {s.label}
                                     </Text>
@@ -166,18 +171,23 @@ export default function StudentsScreen() {
                     </ScrollView>
                 )}
 
+                {/* keys distintas por rama: evitan que React reuse el mismo fiber al pasar de
+                    "cargando" a "lista" y le cambie el className a uno con shadow-card → eso disparaba
+                    el upgrade-warning de css-interop y el crash "navigation context". */}
                 {loading ? (
-                    <View className="flex-1 justify-center items-center">
+                    <View key="students-loading" className="flex-1 justify-center items-center">
                         <ActivityIndicator size="large" color="#16a34a" />
                     </View>
                 ) : filteredAlumnos.length === 0 ? (
-                    <EmptyState
-                        icon={<Users size={28} color="#a8a29e" />}
-                        title="Sin resultados"
-                        description="No se encontraron alumnos."
-                    />
+                    <View key="students-empty" className="flex-1">
+                        <EmptyState
+                            icon={<Users size={28} color="#a8a29e" />}
+                            title="Sin resultados"
+                            description="No se encontraron alumnos."
+                        />
+                    </View>
                 ) : (
-                    <View className="bg-white rounded-[20px] shadow-card overflow-hidden flex-1 mb-2">
+                    <View key="students-list" className="bg-white rounded-[20px] shadow-card overflow-hidden flex-1 mb-2">
                         <FlatList
                             data={filteredAlumnos}
                             keyExtractor={(item) => item.id}

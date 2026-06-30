@@ -11,7 +11,7 @@ import Toast from 'react-native-toast-message';
 
 export default function CustomDrawerContent(props: any) {
     const { user, signOut } = useAuth();
-    const { pushData, pullData } = useInitialSync();
+    const { pushData, pullData, reconcileActiveData } = useInitialSync();
     const [syncing, setSyncing] = useState(false);
     const [pendingCount, setPendingCount] = useState(0);
 
@@ -44,6 +44,8 @@ export default function CustomDrawerContent(props: any) {
             }
 
             const pullSuccess = await pullData(user.id, user.cookies);
+            // Validar que solo queden datos del periodo activo (poda clases/secciones fantasma).
+            await reconcileActiveData();
             if (!pullSuccess) {
                 Toast.show({ type: 'info', text1: 'Aviso', text2: 'Datos subidos, pero no se pudo descargar.' });
             } else {

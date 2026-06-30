@@ -1,8 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, SafeAreaView, Alert } from 'react-native';
-import { useRoute, useNavigation } from '@react-navigation/native';
 import { withDatabase } from '@nozbe/watermelondb/DatabaseProvider';
-import withObservables from '@nozbe/with-observables';
 import { Q } from '@nozbe/watermelondb';
 import Acumulativo from '../../model/Acumulativo';
 import { Badge, EmptyState } from '../../components/ui';
@@ -34,11 +32,31 @@ const AcumulativoRow = ({ acumulativo, isLast, onPress, onLongPress }: { acumula
     </TouchableOpacity>
 );
 
-function ClassGradesScreen({ acumulativos }: { acumulativos: Acumulativo[] }) {
-    const route = useRoute<any>();
-    const navigation = useNavigation<any>();
+function ClassGradesScreen({ database, route, navigation }: { database: any; route: any; navigation: any }) {
     const { asignaturaSeccionId, nombreClase, detalleSeccion, asignaturaId, seccionId } = route.params;
     const [selectedParcial, setSelectedParcial] = useState(1);
+    const [acumulativos, setAcumulativos] = useState<Acumulativo[]>([]);
+
+    // Carga imperativa (NO withObservables): así la pantalla no se re-renderiza cuando está en
+    // segundo plano (p.ej. al guardar una nota encima), evitando el render detached que rompía
+    // el contexto de navegación. Se refresca al volver a enfocar la pantalla.
+    const loadAcumulativos = useCallback(async () => {
+        try {
+            const data = await database.get('acumulativos').query(
+                Q.where('asignatura_id', asignaturaId),
+                Q.where('seccion_id', seccionId)
+            ).fetch();
+            setAcumulativos(data as Acumulativo[]);
+        } catch (e) {
+            console.error('Error cargando acumulativos', e);
+        }
+    }, [database, asignaturaId, seccionId]);
+
+    useEffect(() => {
+        loadAcumulativos();
+        const unsub = navigation.addListener('focus', loadAcumulativos);
+        return unsub;
+    }, [navigation, loadAcumulativos]);
 
     const filtered = acumulativos.filter((a: any) => a.parcial === selectedParcial);
     const totalPuntos = filtered.reduce((acc: number, a: any) => acc + (a.valor || 0), 0);
@@ -84,6 +102,7 @@ function ClassGradesScreen({ acumulativos }: { acumulativos: Acumulativo[] }) {
                             batch.push(acumulativo.prepareDestroyPermanently());
                             await db.batch(...batch);
                         });
+                        await loadAcumulativos();
                     } catch (e) {
                         console.error(e);
                         Alert.alert('Error', 'No se pudo eliminar');
@@ -95,35 +114,43 @@ function ClassGradesScreen({ acumulativos }: { acumulativos: Acumulativo[] }) {
 
     return (
         <SafeAreaView className="flex-1 bg-surface-50">
-            {/* Header */}
-            <View className="bg-white px-6 pt-12 pb-4 border-b border-surface-100">
-                <Text className="text-xl text-surface-900" style={{ fontFamily: 'Inter_700Bold' }}>
-                    {nombreClase}
-                </Text>
-                <Text className="text-sm text-surface-400 mt-0.5" style={{ fontFamily: 'Inter_400Regular' }}>
-                    {detalleSeccion}
-                </Text>
-            </View>
-
+            {/* Header nativo del stack (ver AppNavigator: título nombreClase/detalleSeccion + Inicio) */}
             <ScrollView
                 className="flex-1 px-6"
                 contentContainerStyle={{ paddingTop: 16, paddingBottom: 110 }}
                 showsVerticalScrollIndicator={false}
             >
-                {/* Selector de parcial */}
+                {/* Selector de parcial.
+                    IMPORTANTE: el className de cada pestaña es CONSTANTE y el estado activo
+                    se expresa con `style` inline (RN puro). Si se usa className dinámico aquí,
+                    css-interop (NativeWind) detecta un "upgrade" tras el render inicial e intenta
+                    loguear un warning serializando los props con Object.entries → toca el getter
+                    `getKey` del contexto de navegación y lanza "Couldn't find a navigation context"
+                    (bug de react-native-css-interop al cambiar estilos después del primer render). */}
                 <View className="flex-row bg-[#f0efed] rounded-2xl p-1 mb-5">
                     {PARCIALES.map((p) => {
                         const active = selectedParcial === p.value;
                         return (
                             <TouchableOpacity
                                 key={p.value}
-                                className={`flex-1 py-2.5 rounded-xl items-center ${active ? 'bg-white shadow-card' : ''}`}
+                                className="flex-1 py-2.5 rounded-xl items-center"
+                                style={active ? {
+                                    backgroundColor: '#ffffff',
+                                    shadowColor: '#000',
+                                    shadowOffset: { width: 0, height: 1 },
+                                    shadowOpacity: 0.06,
+                                    shadowRadius: 3,
+                                    elevation: 1,
+                                } : undefined}
                                 onPress={() => setSelectedParcial(p.value)}
                                 activeOpacity={0.7}
                             >
                                 <Text
-                                    className={`text-sm ${active ? 'text-surface-900' : 'text-surface-400'}`}
-                                    style={{ fontFamily: active ? 'Inter_600SemiBold' : 'Inter_500Medium' }}
+                                    className="text-sm"
+                                    style={{
+                                        color: active ? '#1c1917' : '#a8a29e',
+                                        fontFamily: active ? 'Inter_600SemiBold' : 'Inter_500Medium',
+                                    }}
                                 >
                                     {p.label}
                                 </Text>
@@ -201,16 +228,4 @@ function ClassGradesScreen({ acumulativos }: { acumulativos: Acumulativo[] }) {
     );
 }
 
-const enhance = withObservables(['route'], ({ database, route }: { database: any, route: any }) => {
-    const params = route?.params || {};
-    const asignaturaId = params.asignaturaId || '';
-    const seccionId = params.seccionId || '';
-    return {
-        acumulativos: database.get('acumulativos').query(
-            Q.where('asignatura_id', asignaturaId),
-            Q.where('seccion_id', seccionId)
-        ).observe()
-    };
-});
-
-export default withDatabase(enhance(ClassGradesScreen) as any);
+export default withDatabase(ClassGradesScreen as any);

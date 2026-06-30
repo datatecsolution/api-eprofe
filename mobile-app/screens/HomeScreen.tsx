@@ -2,7 +2,6 @@ import React from 'react';
 import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { ScreenWrapper } from '../components/ScreenWrapper';
 import { useAuth } from '../context/AuthContext';
-import { useNavigation } from '@react-navigation/native';
 import { withDatabase } from '@nozbe/watermelondb/DatabaseProvider';
 import withObservables from '@nozbe/with-observables';
 import AsignaturaSeccion from '../model/AsignaturaSeccion';
@@ -66,9 +65,8 @@ const AccessTile = ({ icon, label, onPress }: any) => (
     </TouchableOpacity>
 );
 
-function HomeScreen({ asignaciones }: { asignaciones: AsignaturaSeccion[] }) {
+function HomeScreen({ asignaciones, navigation }: { asignaciones: AsignaturaSeccion[]; navigation: any }) {
     const { user } = useAuth();
-    const navigation = useNavigation<any>();
     const fullName = `${user?.nombre || ''} ${user?.apellido || ''}`.trim();
 
     const handleClassPress = (asignacion: any, asignatura: any, seccion: any) => {

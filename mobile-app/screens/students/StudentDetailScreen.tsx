@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, ActivityIndicator, ScrollView } from 'react-native';
 import { ScreenWrapper } from '../../components/ScreenWrapper';
-import { useRoute } from '@react-navigation/native';
 import { useDatabase } from '@nozbe/watermelondb/hooks';
 import Alumno from '../../model/Alumno';
 import { Avatar, Card } from '../../components/ui';
@@ -21,8 +20,7 @@ const InfoRow = ({ icon, label, value, isLast = false }: { icon: React.ReactNode
     </View>
 );
 
-export default function StudentDetailScreen() {
-    const route = useRoute<any>();
+export default function StudentDetailScreen({ navigation, route }: any) {
     const database = useDatabase();
     const { alumnoId } = route.params;
 
@@ -54,7 +52,8 @@ export default function StudentDetailScreen() {
     const fullName = `${alumno.nombre} ${alumno.apellido}`;
 
     return (
-        <ScreenWrapper className="bg-surface-50">
+        <ScreenWrapper className="bg-surface-50" edges={['left', 'right', 'bottom']}>
+            {/* Título "Alumno" + botón Inicio van en el header nativo del stack */}
             <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
                 {/* Header */}
                 <View className="items-center pt-10 pb-6">

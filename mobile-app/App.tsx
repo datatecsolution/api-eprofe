@@ -7,6 +7,7 @@ import { database } from './model/index'
 import { queryClient } from "./services/queryClient";
 import { AuthProvider } from "./context/AuthContext";
 import AppNavigator from "./navigation/AppNavigator";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 import Toast from 'react-native-toast-message';
 
 import {
@@ -37,7 +38,9 @@ export default function App() {
     <DatabaseProvider database={database}>
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
-          <AppNavigator />
+          <ErrorBoundary>
+            <AppNavigator />
+          </ErrorBoundary>
           <StatusBar style="dark" />
           <Toast />
         </AuthProvider>

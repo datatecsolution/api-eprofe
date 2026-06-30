@@ -53,7 +53,8 @@ public class AppSyncController {
 
             List<Centro> centros = docente.getCentros();
 
-            List<AsignaturaSeccion> asignaciones = asignaturaSeccionRepository.findByDocente(docente);
+            // Solo asignaciones del periodo ACTIVO (evita traer clases fantasma de periodos cerrados)
+            List<AsignaturaSeccion> asignaciones = asignaturaSeccionRepository.findByDocenteAndPeriodoActivo(docente);
 
             List<Seccion> secciones = asignaciones.stream()
                     .map(AsignaturaSeccion::getSeccion)

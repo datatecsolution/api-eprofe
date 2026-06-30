@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation, DrawerActions } from '@react-navigation/native';
+import { DrawerActions } from '@react-navigation/native';
 import { withDatabase } from '@nozbe/watermelondb/DatabaseProvider';
 import withObservables from '@nozbe/with-observables';
 import { Q } from '@nozbe/watermelondb';
@@ -58,9 +58,7 @@ const EnhancedAttendanceItem = withObservables(['asignacion'], ({ asignacion, da
     ).observe(),
 }))(AttendanceItem);
 
-function AttendanceScreen({ asignaciones, database }: { asignaciones: AsignaturaSeccion[]; database: any }) {
-    const navigation = useNavigation<any>();
-
+function AttendanceScreen({ asignaciones, database, navigation }: { asignaciones: AsignaturaSeccion[]; database: any; navigation: any }) {
     const handlePress = (asignacion: any, asignatura: any, seccion: any) => {
         navigation.navigate('TakeAttendance', {
             asignaturaSeccionId: asignacion.id,

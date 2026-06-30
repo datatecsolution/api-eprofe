@@ -1,13 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useLayoutEffect } from 'react';
 import { View, Text, FlatList, TouchableOpacity, SafeAreaView, ActivityIndicator, Alert } from 'react-native';
-import { useRoute, useNavigation } from '@react-navigation/native';
 import { withDatabase } from '@nozbe/watermelondb/DatabaseProvider';
 import { Q } from '@nozbe/watermelondb';
 import Matricula from '../../model/Matricula';
 import Alumno from '../../model/Alumno';
 import AsignaturaSeccion from '../../model/AsignaturaSeccion';
 import { Avatar, Button } from '../../components/ui';
-import { ChevronLeft, ChevronRight, Clock } from 'lucide-react-native';
+import { ClockHeaderButton } from '../../components/ui/StackHeader';
+import { ChevronLeft, ChevronRight } from 'lucide-react-native';
 import Toast from 'react-native-toast-message';
 
 const formatDate = (date: Date) => date.toISOString().split('T')[0];
@@ -70,9 +70,7 @@ const StudentRow = ({ matricula, status, onChangeStatus }: any) => {
     );
 };
 
-function TakeAttendanceScreen({ database }: { database: any }) {
-    const route = useRoute<any>();
-    const navigation = useNavigation<any>();
+function TakeAttendanceScreen({ database, route, navigation }: { database: any; route: any; navigation: any }) {
     const { asignaturaSeccionId, nombreClase, detalleSeccion, initialDate } = route.params;
 
     const [loading, setLoading] = useState(true);
@@ -152,6 +150,13 @@ function TakeAttendanceScreen({ database }: { database: any }) {
         });
     };
 
+    // Botón de Historial en el header nativo (depende de asignaturaSeccion, por eso se fija aquí).
+    useLayoutEffect(() => {
+        navigation.setOptions({
+            headerRight: () => <ClockHeaderButton onPress={handleHistory} />,
+        });
+    }, [navigation, asignaturaSeccion]);
+
     const saveAttendance = async () => {
         if (!asignaturaSeccion) return;
         setLoading(true);
@@ -224,28 +229,9 @@ function TakeAttendanceScreen({ database }: { database: any }) {
     return (
         <SafeAreaView className="flex-1 bg-surface-50">
             {/* Header */}
-            <View className="bg-white px-6 pt-12 pb-4.5 border-b border-surface-100">
-                <View className="flex-row items-start justify-between">
-                    <View className="flex-1 pr-3">
-                        <Text className="text-xl text-surface-900" style={{ fontFamily: 'Inter_700Bold' }}>
-                            {nombreClase}
-                        </Text>
-                        <Text className="text-[13px] text-surface-400 mt-0.5" style={{ fontFamily: 'Inter_400Regular' }}>
-                            {detalleSeccion}
-                        </Text>
-                    </View>
-                    {/* Acceso a Historial */}
-                    <TouchableOpacity
-                        onPress={handleHistory}
-                        activeOpacity={0.7}
-                        className="w-11 h-11 -mr-1 rounded-xl items-center justify-center"
-                    >
-                        <Clock size={22} color="#57534e" />
-                    </TouchableOpacity>
-                </View>
-
-                {/* Date selector */}
-                <View className="flex-row items-center justify-between mt-4 bg-surface-50 rounded-2xl p-1.5">
+            <View className="bg-white px-6 pt-3 pb-4.5 border-b border-surface-100">
+                {/* Selector de fecha (título de clase + botón Historial van en el header nativo) */}
+                <View className="flex-row items-center justify-between bg-surface-50 rounded-2xl p-1.5">
                     <TouchableOpacity
                         className="w-[38px] h-[38px] rounded-xl items-center justify-center bg-white shadow-card"
                         onPress={() => changeDate(-1)}

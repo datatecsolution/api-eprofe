@@ -14,12 +14,13 @@ import AttendanceHistoryScreen from '../screens/attendance/AttendanceHistoryScre
 import GradeSummaryScreen from '../screens/grades/GradeSummaryScreen';
 import { useInitialSync } from '../hooks/useInitialSync';
 import { database } from '../model/index';
+import { HeaderTitle, HomeHeaderButton, detailHeaderOptions } from '../components/ui/StackHeader';
 
 const Stack = createNativeStackNavigator();
 
 function InitialSyncGate({ children }: { children: React.ReactNode }) {
     const { user } = useAuth();
-    const { pullData } = useInitialSync();
+    const { pullData, reconcileActiveData } = useInitialSync();
     const [syncing, setSyncing] = useState(false);
     const [checked, setChecked] = useState(false);
     const [error, setError] = useState(false);
@@ -39,6 +40,8 @@ function InitialSyncGate({ children }: { children: React.ReactNode }) {
                     return;
                 }
             }
+            // En cada login: validar que los datos locales sean del periodo activo / año actual.
+            await reconcileActiveData();
             setChecked(true);
         } catch (err) {
             console.error('Initial sync error', err);
@@ -127,13 +130,103 @@ export default function AppNavigator() {
                                 </InitialSyncGate>
                             )}
                         </Stack.Screen>
-                        <Stack.Screen name="TakeAttendance" component={TakeAttendanceScreen} />
-                        <Stack.Screen name="AttendanceHistory" component={AttendanceHistoryScreen} />
-                        <Stack.Screen name="ClassGrades" component={ClassGradesScreen} />
-                        <Stack.Screen name="CreateGrade" component={CreateGradeScreen} />
-                        <Stack.Screen name="GradeDetail" component={GradeDetailScreen} />
-                        <Stack.Screen name="GradeSummary" component={GradeSummaryScreen} />
-                        <Stack.Screen name="StudentDetail" component={StudentDetailScreen} />
+                        <Stack.Screen
+                            name="TakeAttendance"
+                            component={TakeAttendanceScreen}
+                            options={({ route }: any) => ({
+                                ...detailHeaderOptions,
+                                // El botón de Historial (headerRight) lo fija la pantalla con
+                                // navigation.setOptions porque depende de datos cargados en ella.
+                                headerTitle: () => (
+                                    <HeaderTitle
+                                        title={route.params?.nombreClase ?? 'Asistencia'}
+                                        subtitle={route.params?.detalleSeccion}
+                                    />
+                                ),
+                            })}
+                        />
+                        <Stack.Screen
+                            name="AttendanceHistory"
+                            component={AttendanceHistoryScreen}
+                            options={({ route }: any) => ({
+                                ...detailHeaderOptions,
+                                headerTitle: () => (
+                                    <HeaderTitle
+                                        title={route.params?.nombreClase ?? 'Historial'}
+                                        subtitle={route.params?.detalleSeccion ? `${route.params.detalleSeccion} — Historial` : 'Historial'}
+                                    />
+                                ),
+                            })}
+                        />
+                        <Stack.Screen
+                            name="ClassGrades"
+                            component={ClassGradesScreen}
+                            options={({ route, navigation }: any) => ({
+                                ...detailHeaderOptions,
+                                headerTitle: () => (
+                                    <HeaderTitle
+                                        title={route.params?.nombreClase ?? 'Calificaciones'}
+                                        subtitle={route.params?.detalleSeccion}
+                                    />
+                                ),
+                                headerRight: () => (
+                                    <HomeHeaderButton onPress={() => navigation.navigate('Main', { screen: 'Inicio' })} />
+                                ),
+                            })}
+                        />
+                        <Stack.Screen
+                            name="CreateGrade"
+                            component={CreateGradeScreen}
+                            options={({ route }: any) => ({
+                                ...detailHeaderOptions,
+                                title: route.params?.editAcumulativoId ? 'Editar evaluación' : 'Nueva evaluación',
+                                headerTitleStyle: { fontFamily: 'Inter_700Bold', fontSize: 17, color: '#1c1917' },
+                            })}
+                        />
+                        <Stack.Screen
+                            name="GradeDetail"
+                            component={GradeDetailScreen}
+                            options={({ route, navigation }: any) => ({
+                                ...detailHeaderOptions,
+                                headerTitle: () => (
+                                    <HeaderTitle
+                                        title={route.params?.descripcion ?? 'Evaluación'}
+                                        subtitle="Ingreso de notas"
+                                    />
+                                ),
+                                headerRight: () => (
+                                    <HomeHeaderButton onPress={() => navigation.navigate('Main', { screen: 'Inicio' })} />
+                                ),
+                            })}
+                        />
+                        <Stack.Screen
+                            name="GradeSummary"
+                            component={GradeSummaryScreen}
+                            options={({ route, navigation }: any) => ({
+                                ...detailHeaderOptions,
+                                headerTitle: () => (
+                                    <HeaderTitle
+                                        title={route.params?.nombreClase ?? 'Resumen'}
+                                        subtitle={route.params?.detalleSeccion}
+                                    />
+                                ),
+                                headerRight: () => (
+                                    <HomeHeaderButton onPress={() => navigation.navigate('Main', { screen: 'Inicio' })} />
+                                ),
+                            })}
+                        />
+                        <Stack.Screen
+                            name="StudentDetail"
+                            component={StudentDetailScreen}
+                            options={({ navigation }: any) => ({
+                                ...detailHeaderOptions,
+                                title: 'Alumno',
+                                headerTitleStyle: { fontFamily: 'Inter_700Bold', fontSize: 17, color: '#1c1917' },
+                                headerRight: () => (
+                                    <HomeHeaderButton onPress={() => navigation.navigate('Main', { screen: 'Inicio' })} />
+                                ),
+                            })}
+                        />
                     </>
                 ) : (
                     <Stack.Screen name="Login" component={LoginScreen} />

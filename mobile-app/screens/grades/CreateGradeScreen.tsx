@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, Alert, ActivityIndicator, ScrollView } from 'react-native';
 import { ScreenWrapper } from '../../components/ScreenWrapper';
-import { useNavigation, useRoute } from '@react-navigation/native';
 import { useDatabase } from '@nozbe/watermelondb/hooks';
 import { Q } from '@nozbe/watermelondb';
 import { Button } from '../../components/ui';
@@ -14,9 +13,7 @@ const PARCIALES = [
     { value: 4, label: '4to Parcial' },
 ];
 
-export default function CreateGradeScreen() {
-    const navigation = useNavigation();
-    const route = useRoute<any>();
+export default function CreateGradeScreen({ navigation, route }: any) {
     const database = useDatabase();
     const { asignaturaId, seccionId, editAcumulativoId } = route.params;
 
@@ -149,36 +146,43 @@ export default function CreateGradeScreen() {
     }
 
     return (
-        <ScreenWrapper className="bg-surface-50">
+        <ScreenWrapper className="bg-surface-50" edges={['left', 'right', 'bottom']}>
             <ScrollView className="flex-1 px-5 pt-6" showsVerticalScrollIndicator={false}>
-                <Text
-                    className="text-2xl text-surface-900 mb-6"
-                    style={{ fontFamily: 'Inter_700Bold' }}
-                >
-                    {isEditing ? 'Editar Evaluación' : 'Nueva Evaluación'}
-                </Text>
-
+                {/* Título "Nueva/Editar evaluación" va en el header nativo del stack */}
                 <View className="web:max-w-2xl web:mx-auto w-full">
                     {/* Parcial selector */}
                     <Text className="text-sm text-surface-600 mb-2" style={{ fontFamily: 'Inter_500Medium' }}>
                         Parcial
                     </Text>
                     <View className="flex-row mb-5 bg-surface-100 rounded-2xl p-1">
-                        {PARCIALES.map((p) => (
-                            <TouchableOpacity
-                                key={p.value}
-                                className={`flex-1 py-3 rounded-xl items-center ${parcial === p.value ? 'bg-white shadow-card' : ''}`}
-                                onPress={() => setParcial(p.value)}
-                                activeOpacity={0.7}
-                            >
-                                <Text
-                                    className={`text-sm ${parcial === p.value ? 'text-surface-800' : 'text-surface-400'}`}
-                                    style={{ fontFamily: parcial === p.value ? 'Inter_600SemiBold' : 'Inter_500Medium' }}
+                        {/* className constante + style inline (evita el bug de css-interop al
+                            cambiar className dinámico tras el render inicial). */}
+                        {PARCIALES.map((p) => {
+                            const active = parcial === p.value;
+                            return (
+                                <TouchableOpacity
+                                    key={p.value}
+                                    className="flex-1 py-3 rounded-xl items-center"
+                                    style={active ? {
+                                        backgroundColor: '#ffffff',
+                                        shadowColor: '#000',
+                                        shadowOffset: { width: 0, height: 1 },
+                                        shadowOpacity: 0.06,
+                                        shadowRadius: 3,
+                                        elevation: 1,
+                                    } : undefined}
+                                    onPress={() => setParcial(p.value)}
+                                    activeOpacity={0.7}
                                 >
-                                    {p.label}
-                                </Text>
-                            </TouchableOpacity>
-                        ))}
+                                    <Text
+                                        className="text-sm"
+                                        style={{ color: active ? '#292524' : '#a8a29e', fontFamily: active ? 'Inter_600SemiBold' : 'Inter_500Medium' }}
+                                    >
+                                        {p.label}
+                                    </Text>
+                                </TouchableOpacity>
+                            );
+                        })}
                     </View>
 
                     {/* Points indicator */}

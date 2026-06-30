@@ -1,6 +1,5 @@
 import React from 'react';
 import { View, Text, FlatList, SafeAreaView, ActivityIndicator } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
 import { withDatabase } from '@nozbe/watermelondb/DatabaseProvider';
 import withObservables from '@nozbe/with-observables';
 import AsignaturaSeccion from '../../model/AsignaturaSeccion';
@@ -35,9 +34,7 @@ const EnhancedGradeClassItem = withObservables(['asignacion'], ({ asignacion }) 
     asignatura: asignacion.asignatura
 }))(GradeClassItem);
 
-function GradesScreen({ asignaciones }: { asignaciones: AsignaturaSeccion[] }) {
-    const navigation = useNavigation<any>();
-
+function GradesScreen({ asignaciones, navigation }: { asignaciones: AsignaturaSeccion[]; navigation: any }) {
     const handlePress = (asignacion: any, asignatura: any, seccion: any) => {
         navigation.navigate('ClassGrades', {
             asignaturaSeccionId: asignacion.id,

@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, TextInput, SafeAreaView, ActivityIndicator, Alert, KeyboardAvoidingView, Platform } from 'react-native';
-import { useRoute, useNavigation } from '@react-navigation/native';
 import { withDatabase } from '@nozbe/watermelondb/DatabaseProvider';
 import { Q } from '@nozbe/watermelondb';
 import Matricula from '../../model/Matricula';
@@ -45,9 +44,7 @@ const StudentGradeRow = ({ matricula, grade, maxGrade, onChangeGrade }: any) => 
     );
 };
 
-function GradeDetailScreen({ database }: { database: any }) {
-    const route = useRoute<any>();
-    const navigation = useNavigation<any>();
+function GradeDetailScreen({ database, route, navigation }: { database: any; route: any; navigation: any }) {
     const { acumulativoId, descripcion } = route.params;
 
     const [loading, setLoading] = useState(true);
@@ -152,19 +149,10 @@ function GradeDetailScreen({ database }: { database: any }) {
     return (
         <SafeAreaView className="flex-1 bg-surface-50">
             <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} className="flex-1">
-                {/* Header */}
-                <View className="bg-white px-5 pt-10 pb-4 border-b border-surface-100">
-                    <View className="flex-row items-center justify-between">
-                        <View className="flex-1">
-                            <Text className="text-xl text-surface-900" style={{ fontFamily: 'Inter_700Bold' }}>
-                                {descripcion}
-                            </Text>
-                            <Text className="text-sm text-surface-400 mt-0.5" style={{ fontFamily: 'Inter_400Regular' }}>
-                                Ingreso de notas
-                            </Text>
-                        </View>
-                        <Badge label={`Máx ${acumulativo?.valor || 0} pts`} variant="info" />
-                    </View>
+                {/* Título "{descripcion} · Ingreso de notas" va en el header nativo.
+                    Mantenemos el máximo de puntos a la vista en una barra fina. */}
+                <View className="bg-white px-5 py-3 border-b border-surface-100 flex-row items-center justify-end">
+                    <Badge label={`Máx ${acumulativo?.valor || 0} pts`} variant="info" />
                 </View>
 
                 <FlatList

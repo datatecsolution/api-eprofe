@@ -244,5 +244,44 @@ export function useInitialSync() {
         }
     };
 
-    return { pullData, pushData };
+    // Valida que el frontend solo trabaje con datos del PERIODO ACTIVO y del AÑO actual.
+    // Poda clases/secciones de periodos cerrados y matrículas de años anteriores que hayan
+    // quedado como residuo local. Se llama tras cada login y cada sincronización.
+    const reconcileActiveData = async () => {
+        try {
+            const activos = await database.get('periodos').query(Q.where('estado', true)).fetch();
+            const activeIds = new Set(activos.map((p: any) => p.id));
+            // Sin periodo activo conocido no se puede validar con seguridad: no se poda nada.
+            if (activeIds.size === 0) return { pruned: 0 };
+
+            const year = new Date().getFullYear();
+
+            const secciones = await database.get('secciones').query().fetch();
+            const staleSecciones = secciones.filter((s: any) => !activeIds.has(s._raw.periodo_id));
+            const staleSeccionIds = new Set(staleSecciones.map((s: any) => s.id));
+
+            const asigSec = await database.get('asignaturas_secciones').query().fetch();
+            const staleAsig = asigSec.filter((a: any) => staleSeccionIds.has(a._raw.seccion_id));
+
+            const staleMatriculas = await database.get('matriculas').query(Q.where('year', Q.notEq(year))).fetch();
+
+            const ops = [
+                ...staleAsig.map((a: any) => a.prepareDestroyPermanently()),
+                ...staleSecciones.map((s: any) => s.prepareDestroyPermanently()),
+                ...staleMatriculas.map((m: any) => m.prepareDestroyPermanently()),
+            ];
+            if (ops.length === 0) return { pruned: 0 };
+
+            await database.write(async () => {
+                await database.batch(...ops);
+            });
+            console.log(`reconcileActiveData: podadas ${staleAsig.length} clases, ${staleSecciones.length} secciones y ${staleMatriculas.length} matrículas de periodos/años no activos`);
+            return { pruned: ops.length, clases: staleAsig.length };
+        } catch (error) {
+            console.error('reconcileActiveData error', error);
+            return { pruned: 0 };
+        }
+    };
+
+    return { pullData, pushData, reconcileActiveData };
 }
