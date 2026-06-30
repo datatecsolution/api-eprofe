@@ -1,31 +1,30 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, TextInput, TouchableOpacity, SafeAreaView, ActivityIndicator, ScrollView } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { View, Text, FlatList, TextInput, TouchableOpacity, ActivityIndicator, ScrollView } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation, DrawerActions } from '@react-navigation/native';
 import { useDatabase } from '@nozbe/watermelondb/hooks';
 import { Q } from '@nozbe/watermelondb';
 import Alumno from '../../model/Alumno';
-import { Avatar, Card, EmptyState } from '../../components/ui';
-import { Search, ChevronRight, Users } from 'lucide-react-native';
+import { Avatar, EmptyState } from '../../components/ui';
+import { Search, ChevronRight, Users, Menu } from 'lucide-react-native';
 
-const StudentItem = ({ alumno, seccionLabel, onPress }: { alumno: Alumno; seccionLabel?: string; onPress: () => void }) => (
-    <Card className="mb-2" onPress={onPress}>
-        <View className="flex-row items-center">
-            <Avatar name={`${alumno.nombre} ${alumno.apellido}`} size="sm" />
-            <View className="flex-1 ml-3">
-                <Text
-                    className="text-base text-surface-800"
-                    style={{ fontFamily: 'Inter_500Medium' }}
-                    numberOfLines={1}
-                >
-                    {alumno.nombre} {alumno.apellido}
-                </Text>
-                <Text className="text-xs text-surface-400" style={{ fontFamily: 'Inter_400Regular' }}>
-                    {alumno.rne || 'Sin RNE'}{seccionLabel ? ` · ${seccionLabel}` : ''}
-                </Text>
-            </View>
-            <ChevronRight size={18} color="#d6d3d1" />
+const StudentRow = ({ alumno, seccionLabel, onPress }: { alumno: Alumno; seccionLabel?: string; onPress: () => void }) => (
+    <TouchableOpacity onPress={onPress} activeOpacity={0.7} className="flex-row items-center px-4.5 py-3.5 bg-white">
+        <Avatar name={`${alumno.nombre} ${alumno.apellido}`} size="sm" />
+        <View className="flex-1 mx-3">
+            <Text
+                className="text-[15px] text-surface-800"
+                style={{ fontFamily: 'Inter_500Medium' }}
+                numberOfLines={1}
+            >
+                {alumno.nombre} {alumno.apellido}
+            </Text>
+            <Text className="text-xs text-surface-400 mt-0.5" style={{ fontFamily: 'Inter_400Regular' }}>
+                {alumno.rne || 'Sin RNE'}{seccionLabel ? ` · ${seccionLabel}` : ''}
+            </Text>
         </View>
-    </Card>
+        <ChevronRight size={18} color="#d6d3d1" />
+    </TouchableOpacity>
 );
 
 type SeccionOption = { id: string; label: string };
@@ -105,46 +104,25 @@ export default function StudentsScreen() {
 
     return (
         <SafeAreaView className="flex-1 bg-surface-50">
-            <View className="px-5 pt-2 flex-1">
-                {/* Section filter */}
-                {secciones.length > 0 && (
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-3 -mx-1">
-                        <TouchableOpacity
-                            className={`px-4 py-2.5 mx-1 rounded-xl ${!selectedSeccion ? 'bg-primary-600' : 'bg-surface-100'}`}
-                            onPress={() => setSelectedSeccion(null)}
-                            activeOpacity={0.7}
-                        >
-                            <Text
-                                className={`text-sm ${!selectedSeccion ? 'text-white' : 'text-surface-600'}`}
-                                style={{ fontFamily: 'Inter_600SemiBold' }}
-                            >
-                                Todos
-                            </Text>
-                        </TouchableOpacity>
-                        {secciones.map(s => (
-                            <TouchableOpacity
-                                key={s.id}
-                                className={`px-4 py-2.5 mx-1 rounded-xl ${selectedSeccion === s.id ? 'bg-primary-600' : 'bg-surface-100'}`}
-                                onPress={() => setSelectedSeccion(s.id)}
-                                activeOpacity={0.7}
-                            >
-                                <Text
-                                    className={`text-sm ${selectedSeccion === s.id ? 'text-white' : 'text-surface-600'}`}
-                                    style={{ fontFamily: 'Inter_500Medium' }}
-                                >
-                                    {s.label}
-                                </Text>
-                            </TouchableOpacity>
-                        ))}
-                    </ScrollView>
-                )}
+            <View className="px-6 pt-2 flex-1">
+                {/* Header con botón de menú + título */}
+                <TouchableOpacity
+                    onPress={() => navigation.dispatch(DrawerActions.openDrawer())}
+                    activeOpacity={0.7}
+                    className="w-11 h-11 -ml-2 rounded-xl items-center justify-center mb-2"
+                >
+                    <Menu size={24} color="#1c1917" />
+                </TouchableOpacity>
+                <Text className="text-[28px] text-surface-900 mb-5" style={{ fontFamily: 'Inter_700Bold' }}>
+                    Alumnos
+                </Text>
 
-                {/* Search */}
-                <View className="flex-row items-center bg-white border-2 border-surface-200 rounded-2xl px-4 mb-4">
+                {/* Búsqueda */}
+                <View className="flex-row items-center bg-white border-[1.5px] border-surface-200 rounded-2xl px-4 mb-4">
                     <Search size={18} color="#a8a29e" />
                     <TextInput
-                        placeholder="Buscar alumno..."
-                        className="flex-1 py-3.5 ml-3 text-base text-surface-800"
+                        placeholder="Buscar alumno…"
+                        className="flex-1 py-[13px] ml-3 text-[15px] text-surface-800"
                         style={{ fontFamily: 'Inter_400Regular' }}
                         placeholderTextColor="#a8a29e"
                         value={search}
@@ -152,30 +130,68 @@ export default function StudentsScreen() {
                     />
                 </View>
 
+                {/* Chips de sección */}
+                {secciones.length > 0 && (
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-4 -mx-1 grow-0">
+                        <TouchableOpacity
+                            className={`px-[15px] py-2 mx-1 rounded-xl ${!selectedSeccion ? 'bg-primary-600' : 'bg-surface-100'}`}
+                            onPress={() => setSelectedSeccion(null)}
+                            activeOpacity={0.7}
+                        >
+                            <Text
+                                className={`text-[13px] ${!selectedSeccion ? 'text-white' : 'text-surface-600'}`}
+                                style={{ fontFamily: !selectedSeccion ? 'Inter_600SemiBold' : 'Inter_500Medium' }}
+                            >
+                                Todos
+                            </Text>
+                        </TouchableOpacity>
+                        {secciones.map(s => {
+                            const active = selectedSeccion === s.id;
+                            return (
+                                <TouchableOpacity
+                                    key={s.id}
+                                    className={`px-[15px] py-2 mx-1 rounded-xl ${active ? 'bg-primary-600' : 'bg-surface-100'}`}
+                                    onPress={() => setSelectedSeccion(s.id)}
+                                    activeOpacity={0.7}
+                                >
+                                    <Text
+                                        className={`text-[13px] ${active ? 'text-white' : 'text-surface-600'}`}
+                                        style={{ fontFamily: active ? 'Inter_600SemiBold' : 'Inter_500Medium' }}
+                                    >
+                                        {s.label}
+                                    </Text>
+                                </TouchableOpacity>
+                            );
+                        })}
+                    </ScrollView>
+                )}
+
                 {loading ? (
                     <View className="flex-1 justify-center items-center">
                         <ActivityIndicator size="large" color="#16a34a" />
                     </View>
-                ) : (
-                    <FlatList
-                        data={filteredAlumnos}
-                        keyExtractor={(item) => item.id}
-                        renderItem={({ item }) => (
-                            <StudentItem
-                                alumno={item}
-                                seccionLabel={!selectedSeccion ? alumnoSecciones[item.id] : undefined}
-                                onPress={() => handlePress(item)}
-                            />
-                        )}
-                        showsVerticalScrollIndicator={false}
-                        ListEmptyComponent={
-                            <EmptyState
-                                icon={<Users size={28} color="#a8a29e" />}
-                                title="Sin resultados"
-                                description="No se encontraron alumnos."
-                            />
-                        }
+                ) : filteredAlumnos.length === 0 ? (
+                    <EmptyState
+                        icon={<Users size={28} color="#a8a29e" />}
+                        title="Sin resultados"
+                        description="No se encontraron alumnos."
                     />
+                ) : (
+                    <View className="bg-white rounded-[20px] shadow-card overflow-hidden flex-1 mb-2">
+                        <FlatList
+                            data={filteredAlumnos}
+                            keyExtractor={(item) => item.id}
+                            renderItem={({ item }) => (
+                                <StudentRow
+                                    alumno={item}
+                                    seccionLabel={!selectedSeccion ? alumnoSecciones[item.id] : undefined}
+                                    onPress={() => handlePress(item)}
+                                />
+                            )}
+                            ItemSeparatorComponent={() => <View className="h-px bg-surface-100" />}
+                            showsVerticalScrollIndicator={false}
+                        />
+                    </View>
                 )}
             </View>
         </SafeAreaView>

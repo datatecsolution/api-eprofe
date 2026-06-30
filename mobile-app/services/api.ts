@@ -9,9 +9,18 @@ const api = axios.create({
     },
 });
 
-// Add interceptors if needed (e.g. auth token)
+// Token JWT en memoria — lo setea AuthContext en signIn y al restaurar la sesión.
+let authToken: string | null = null;
+
+export function setAuthToken(token: string | null) {
+    authToken = token;
+}
+
+// Adjunta el token JWT a cada request (los endpoints protegidos lo exigen).
 api.interceptors.request.use(async (config) => {
-    // TODO: Add auth token from SecureStore/AsyncStorage
+    if (authToken) {
+        config.headers.Authorization = `Bearer ${authToken}`;
+    }
     return config;
 }, (error) => {
     return Promise.reject(error);

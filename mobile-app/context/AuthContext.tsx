@@ -1,7 +1,7 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import { Platform } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
-import api from '../services/api';
+import api, { setAuthToken } from '../services/api';
 import { database } from '../model/index';
 
 interface User {
@@ -31,12 +31,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         async function loadStorageData() {
             try {
                 let storedUser: string | null = null;
+                let storedToken: string | null = null;
                 if (Platform.OS === 'web') {
                     storedUser = localStorage.getItem('user');
+                    storedToken = localStorage.getItem('token');
                 } else {
                     storedUser = await SecureStore.getItemAsync('user');
+                    storedToken = await SecureStore.getItemAsync('token');
                 }
 
+                // Restaurar el token ANTES de marcar al usuario, para que el sync inicial salga autenticado.
+                if (storedToken) {
+                    setAuthToken(storedToken);
+                }
                 if (storedUser) {
                     setUser(JSON.parse(storedUser));
                 }
@@ -60,6 +67,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
             if (response.data && response.data.success) {
                 const backendDocente = response.data.docente;
+                const token: string | undefined = response.data.token;
                 const userData: User = {
                     id: backendDocente?.id ?? 999,
                     userSace: userSace,
@@ -68,6 +76,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     email: backendDocente?.email || '',
                     cookies: cookies
                 };
+
+                // Guardar el token JWT y activarlo ANTES del sync inicial.
+                if (token) {
+                    setAuthToken(token);
+                    if (Platform.OS === 'web') {
+                        localStorage.setItem('token', token);
+                    } else {
+                        await SecureStore.setItemAsync('token', token);
+                    }
+                }
+
                 setUser(userData);
 
                 // Store user without cookies (cookies can be huge base64 data that exceeds SecureStore limits)
@@ -99,10 +118,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             console.error('Error resetting database', error);
         }
         setUser(null);
+        setAuthToken(null);
         if (Platform.OS === 'web') {
             localStorage.removeItem('user');
+            localStorage.removeItem('token');
         } else {
             await SecureStore.deleteItemAsync('user');
+            await SecureStore.deleteItemAsync('token');
         }
     }
 

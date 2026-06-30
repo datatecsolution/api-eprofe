@@ -77,17 +77,17 @@ export default function LoginScreen() {
             <StatusBar style="dark" />
             <KeyboardAvoidingView
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                className="flex-1 justify-center px-6"
+                className="flex-1 justify-center px-[30px]"
             >
                 {/* Logo / Brand */}
-                <View className="items-center mb-10">
-                    <View className="bg-primary-600 h-18 w-18 rounded-3xl items-center justify-center mb-4 shadow-button">
-                        <Text className="text-3xl text-white" style={{ fontFamily: 'Inter_700Bold' }}>e</Text>
+                <View className="items-center mb-[42px]">
+                    <View className="bg-primary-600 w-[66px] h-[66px] rounded-[21px] items-center justify-center mb-4 shadow-button">
+                        <Text className="text-[34px] text-white" style={{ fontFamily: 'Inter_700Bold' }}>e</Text>
                     </View>
                     <Text className="text-3xl text-surface-900" style={{ fontFamily: 'Inter_700Bold' }}>
                         eProfe
                     </Text>
-                    <Text className="text-base text-surface-400 mt-1" style={{ fontFamily: 'Inter_400Regular' }}>
+                    <Text className="text-[15px] text-surface-400 mt-1" style={{ fontFamily: 'Inter_400Regular' }}>
                         Tu asistente de clases
                     </Text>
                 </View>

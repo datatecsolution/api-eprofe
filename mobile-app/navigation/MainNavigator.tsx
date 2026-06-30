@@ -35,7 +35,10 @@ export default function MainNavigator() {
             <Drawer.Screen
                 name="Asistencia"
                 component={AttendanceScreen}
-                options={{ drawerIcon: ({ color, size }) => <ClipboardCheck size={size} color={color} /> }}
+                options={{
+                    headerShown: false,
+                    drawerIcon: ({ color, size }) => <ClipboardCheck size={size} color={color} />,
+                }}
             />
             <Drawer.Screen
                 name="Acumulativos"
@@ -48,7 +51,10 @@ export default function MainNavigator() {
             <Drawer.Screen
                 name="Alumnos"
                 component={StudentsScreen}
-                options={{ drawerIcon: ({ color, size }) => <Users size={size} color={color} /> }}
+                options={{
+                    headerShown: false,
+                    drawerIcon: ({ color, size }) => <Users size={size} color={color} />,
+                }}
             />
             <Drawer.Screen
                 name="Mi Perfil"

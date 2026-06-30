@@ -7,7 +7,7 @@ import Matricula from '../../model/Matricula';
 import Alumno from '../../model/Alumno';
 import AsignaturaSeccion from '../../model/AsignaturaSeccion';
 import { Avatar, Button } from '../../components/ui';
-import { ChevronLeft, ChevronRight, Check, X, AlertTriangle } from 'lucide-react-native';
+import { ChevronLeft, ChevronRight, Clock } from 'lucide-react-native';
 import Toast from 'react-native-toast-message';
 
 const formatDate = (date: Date) => date.toISOString().split('T')[0];
@@ -18,11 +18,8 @@ const formatDateDisplay = (dateStr: string) => {
     return `${d} ${months[parseInt(m) - 1]} ${y}`;
 };
 
-const statusConfig = {
-    P: { bg: 'bg-green-500', bgInactive: 'bg-surface-100', label: 'P', icon: Check, color: '#22c55e' },
-    A: { bg: 'bg-red-500', bgInactive: 'bg-surface-100', label: 'A', icon: X, color: '#ef4444' },
-    E: { bg: 'bg-amber-500', bgInactive: 'bg-surface-100', label: 'E', icon: AlertTriangle, color: '#f59e0b' },
-};
+// Color de fondo del segmento activo (tokens del tema)
+const activeBg: Record<string, string> = { P: 'bg-primary-600', A: 'bg-danger', E: 'bg-warning' };
 
 const StudentRow = ({ matricula, status, onChangeStatus }: any) => {
     const [alumno, setAlumno] = useState<Alumno | null>(null);
@@ -36,11 +33,11 @@ const StudentRow = ({ matricula, status, onChangeStatus }: any) => {
     const fullName = `${alumno.nombre} ${alumno.apellido}`;
 
     return (
-        <View className="flex-row items-center bg-white px-5 py-3.5 border-b border-surface-100">
+        <View className="flex-row items-center bg-white px-6 py-3 border-b border-surface-100">
             <Avatar name={fullName} size="sm" />
-            <View className="flex-1 ml-3">
+            <View className="flex-1 mx-3">
                 <Text
-                    className="text-base text-surface-800"
+                    className="text-[15px] text-surface-800"
                     style={{ fontFamily: 'Inter_500Medium' }}
                     numberOfLines={1}
                 >
@@ -48,23 +45,22 @@ const StudentRow = ({ matricula, status, onChangeStatus }: any) => {
                 </Text>
             </View>
 
-            {/* Touch targets de 48px+ para facilitar el toque */}
-            <View className="flex-row">
+            {/* Control segmentado P/A/E (touch target ≥44px de alto en la fila) */}
+            <View className="flex-row bg-surface-100 rounded-xl p-[3px]">
                 {(['P', 'A', 'E'] as const).map((opt) => {
-                    const config = statusConfig[opt];
                     const isActive = status === opt;
                     return (
                         <TouchableOpacity
                             key={opt}
                             onPress={() => onChangeStatus(matricula.id, opt)}
-                            activeOpacity={0.6}
-                            className={`w-12 h-12 rounded-2xl items-center justify-center ml-2 ${isActive ? config.bg : config.bgInactive}`}
+                            activeOpacity={0.7}
+                            className={`w-9 h-8 rounded-[9px] items-center justify-center ${isActive ? activeBg[opt] : ''}`}
                         >
                             <Text
-                                className={`text-base ${isActive ? 'text-white' : 'text-surface-400'}`}
+                                className={`text-sm ${isActive ? 'text-white' : 'text-surface-400'}`}
                                 style={{ fontFamily: 'Inter_700Bold' }}
                             >
-                                {config.label}
+                                {opt}
                             </Text>
                         </TouchableOpacity>
                     );
@@ -76,7 +72,7 @@ const StudentRow = ({ matricula, status, onChangeStatus }: any) => {
 
 function TakeAttendanceScreen({ database }: { database: any }) {
     const route = useRoute<any>();
-    const navigation = useNavigation();
+    const navigation = useNavigation<any>();
     const { asignaturaSeccionId, nombreClase, detalleSeccion, initialDate } = route.params;
 
     const [loading, setLoading] = useState(true);
@@ -145,6 +141,17 @@ function TakeAttendanceScreen({ database }: { database: any }) {
         setAttendanceMap(prev => ({ ...prev, [matriculaId]: newStatus }));
     };
 
+    const handleHistory = () => {
+        if (!asignaturaSeccion) return;
+        navigation.navigate('AttendanceHistory', {
+            asignaturaSeccionId,
+            nombreClase,
+            detalleSeccion,
+            asignaturaId: (asignaturaSeccion as any)._raw.asignatura_id,
+            seccionId: (asignaturaSeccion as any)._raw.seccion_id,
+        });
+    };
+
     const saveAttendance = async () => {
         if (!asignaturaSeccion) return;
         setLoading(true);
@@ -208,29 +215,47 @@ function TakeAttendanceScreen({ database }: { database: any }) {
         );
     }
 
+    // Conteos derivados para las píldoras de resumen
+    const estados = Object.values(attendanceMap);
+    const presentes = estados.filter(s => s === 'P').length;
+    const ausentes = estados.filter(s => s === 'A').length;
+    const excusas = estados.filter(s => s === 'E').length;
+
     return (
         <SafeAreaView className="flex-1 bg-surface-50">
             {/* Header */}
-            <View className="bg-white px-5 pt-10 pb-4 border-b border-surface-100">
-                <Text className="text-xl text-surface-900" style={{ fontFamily: 'Inter_700Bold' }}>
-                    {nombreClase}
-                </Text>
-                <Text className="text-sm text-surface-400 mt-0.5" style={{ fontFamily: 'Inter_400Regular' }}>
-                    {detalleSeccion}
-                </Text>
+            <View className="bg-white px-6 pt-12 pb-4.5 border-b border-surface-100">
+                <View className="flex-row items-start justify-between">
+                    <View className="flex-1 pr-3">
+                        <Text className="text-xl text-surface-900" style={{ fontFamily: 'Inter_700Bold' }}>
+                            {nombreClase}
+                        </Text>
+                        <Text className="text-[13px] text-surface-400 mt-0.5" style={{ fontFamily: 'Inter_400Regular' }}>
+                            {detalleSeccion}
+                        </Text>
+                    </View>
+                    {/* Acceso a Historial */}
+                    <TouchableOpacity
+                        onPress={handleHistory}
+                        activeOpacity={0.7}
+                        className="w-11 h-11 -mr-1 rounded-xl items-center justify-center"
+                    >
+                        <Clock size={22} color="#57534e" />
+                    </TouchableOpacity>
+                </View>
 
                 {/* Date selector */}
-                <View className="flex-row items-center justify-between mt-4 bg-surface-50 rounded-2xl p-1">
+                <View className="flex-row items-center justify-between mt-4 bg-surface-50 rounded-2xl p-1.5">
                     <TouchableOpacity
-                        className="h-12 w-12 rounded-xl items-center justify-center"
+                        className="w-[38px] h-[38px] rounded-xl items-center justify-center bg-white shadow-card"
                         onPress={() => changeDate(-1)}
                         activeOpacity={0.6}
                     >
-                        <ChevronLeft size={24} color="#44403c" />
+                        <ChevronLeft size={22} color="#44403c" />
                     </TouchableOpacity>
 
                     <View className="items-center">
-                        <Text className="text-base text-surface-800" style={{ fontFamily: 'Inter_600SemiBold' }}>
+                        <Text className="text-[15px] text-surface-800" style={{ fontFamily: 'Inter_600SemiBold' }}>
                             {formatDateDisplay(selectedDate)}
                         </Text>
                         {isToday && (
@@ -241,13 +266,32 @@ function TakeAttendanceScreen({ database }: { database: any }) {
                     </View>
 
                     <TouchableOpacity
-                        className={`h-12 w-12 rounded-xl items-center justify-center ${isToday ? 'opacity-30' : ''}`}
+                        className={`w-[38px] h-[38px] rounded-xl items-center justify-center bg-white shadow-card ${isToday ? 'opacity-30' : ''}`}
                         onPress={() => changeDate(1)}
                         disabled={isToday}
                         activeOpacity={0.6}
                     >
-                        <ChevronRight size={24} color="#44403c" />
+                        <ChevronRight size={22} color="#44403c" />
                     </TouchableOpacity>
+                </View>
+            </View>
+
+            {/* Píldoras de resumen */}
+            <View className="flex-row px-6 pt-3 pb-1">
+                <View className="bg-primary-100 rounded-full px-3 py-1 mr-2">
+                    <Text className="text-xs text-primary-700" style={{ fontFamily: 'Inter_600SemiBold' }}>
+                        {presentes} presentes
+                    </Text>
+                </View>
+                <View className="bg-red-100 rounded-full px-3 py-1 mr-2">
+                    <Text className="text-xs text-red-700" style={{ fontFamily: 'Inter_600SemiBold' }}>
+                        {ausentes} {ausentes === 1 ? 'ausente' : 'ausentes'}
+                    </Text>
+                </View>
+                <View className="bg-amber-100 rounded-full px-3 py-1">
+                    <Text className="text-xs text-amber-700" style={{ fontFamily: 'Inter_600SemiBold' }}>
+                        {excusas} {excusas === 1 ? 'excusa' : 'excusas'}
+                    </Text>
                 </View>
             </View>
 
@@ -266,8 +310,8 @@ function TakeAttendanceScreen({ database }: { database: any }) {
             />
 
             {/* Fixed bottom CTA */}
-            <View className="absolute bottom-0 w-full px-5 py-4 bg-white border-t border-surface-100">
-                <Button title="Guardar Asistencia" onPress={saveAttendance} size="lg" />
+            <View className="absolute bottom-0 w-full px-6 pt-4 pb-9 bg-white border-t border-surface-100">
+                <Button title="Guardar asistencia" onPress={saveAttendance} size="lg" />
             </View>
         </SafeAreaView>
     );
