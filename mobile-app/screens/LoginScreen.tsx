@@ -39,11 +39,26 @@ export default function LoginScreen() {
                 return;
             }
 
+            // En WEB no hay WebView: el scraping de SACE lo hace el backend
+            // (POST /sace/sync-server) disparado por el sync inicial (InitialSyncGate → pullData).
+            // Solo iniciamos sesión; el InitialSyncGate mostrará "Descargando datos…" mientras corre.
+            if (Platform.OS === 'web') {
+                setStatusMessage('Sincronizando con SACE...');
+                await signIn(userSace, passwordSace);
+                return;
+            }
+
             setStatusMessage('Conectando con SACE...');
             setShowWebView(true);
 
         } catch (error: any) {
             console.error('Direct login failed, falling back to SACE:', error.message);
+            if (Platform.OS === 'web') {
+                setLoading(false);
+                setStatusMessage('');
+                Alert.alert('No se pudo conectar', 'Verifica tu usuario y contraseña, e inténtalo de nuevo.');
+                return;
+            }
             setStatusMessage('Conectando con SACE...');
             setShowWebView(true);
         }

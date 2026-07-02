@@ -39,6 +39,21 @@ public class SaceScraperService {
                 .timeout(30000);
     }
 
+    /**
+     * Conexión para envíos de FORMULARIO (POST). Django, sobre HTTPS, exige un header `Referer`
+     * (y valida `Origin`) para pasar la protección CSRF; sin ellos responde 403. Un navegador real
+     * (el WebView del móvil) los envía automáticamente, pero el `connect()` base no. Además el POST
+     * de un formulario del mismo sitio debe llevar `Sec-Fetch-Site: same-origin` (no `none`).
+     */
+    private Connection connectForm(String url, String referer) {
+        return connect(url)
+                .header("Referer", referer)
+                .header("Origin", "https://sace.se.gob.hn")
+                .header("Sec-Fetch-Site", "same-origin")
+                .header("Sec-Fetch-Mode", "navigate")
+                .header("Sec-Fetch-Dest", "document");
+    }
+
     private javax.net.ssl.SSLSocketFactory socketFactory() {
         javax.net.ssl.TrustManager[] trustAllCerts = new javax.net.ssl.TrustManager[] {
                 new javax.net.ssl.X509TrustManager() {
@@ -105,7 +120,7 @@ public class SaceScraperService {
         this.csrfToken = tokenInputs.isEmpty() ? "" : tokenInputs.first().val();
 
         // 2. Submit Credentials
-        Connection.Response authResponse = connect(LOGIN_URL)
+        Connection.Response authResponse = connectForm(LOGIN_URL, LOGIN_URL)
                 .data("csrfmiddlewaretoken", this.csrfToken)
                 .data("usuario", username)
                 .data("clave", password)
@@ -134,7 +149,7 @@ public class SaceScraperService {
             String formCsrf = targetForm.select("input[name=csrfmiddlewaretoken]").val();
             String formUsuario = targetForm.select("input[name=usuario]").val();
 
-            Connection.Response profileResponse = connect(AUTORIZAR_URL)
+            Connection.Response profileResponse = connectForm(AUTORIZAR_URL, LOGIN_URL)
                     .data("csrfmiddlewaretoken", formCsrf)
                     .data("usuario", formUsuario)
                     .cookies(this.cookies)
@@ -184,7 +199,7 @@ public class SaceScraperService {
             String csId = button.attr("data-cs");
 
             try {
-                Connection.Response fileResponse = connect(DESCARGAR_URL)
+                Connection.Response fileResponse = connectForm(DESCARGAR_URL, DESCARGAR_URL)
                         .data("cs", csId)
                         .data("csrfmiddlewaretoken", downloadToken)
                         .cookies(this.cookies)
@@ -229,7 +244,7 @@ public class SaceScraperService {
         String uploadToken = tokenInputs.isEmpty() ? this.csrfToken : tokenInputs.first().val();
 
         // 2. POST el archivo Excel
-        Connection.Response uploadResponse = connect(SUBIR_URL)
+        Connection.Response uploadResponse = connectForm(SUBIR_URL, SUBIR_URL)
                 .data("csrfmiddlewaretoken", uploadToken)
                 .data("archivo", fileName, new java.io.ByteArrayInputStream(fileBytes))
                 .cookies(this.cookies)

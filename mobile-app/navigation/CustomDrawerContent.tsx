@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator, Alert, SafeAreaView } from 'react-native';
+import { View, Text, TouchableOpacity, ActivityIndicator, Alert, SafeAreaView, Platform } from 'react-native';
 import { DrawerContentScrollView, DrawerItemList } from '@react-navigation/drawer';
 import { useAuth } from '../context/AuthContext';
 import { useInitialSync } from '../hooks/useInitialSync';
@@ -61,6 +61,32 @@ export default function CustomDrawerContent(props: any) {
     };
 
     const handleSignOut = async () => {
+        // En WEB, react-native-web no ejecuta los callbacks de los botones de Alert.alert, así que
+        // el botón "Salir" nunca disparaba signOut(). Usamos window.confirm (binario) en su lugar.
+        if (Platform.OS === 'web') {
+            if (pendingCount > 0) {
+                const ok = window.confirm(
+                    `Tienes ${pendingCount} registro(s) sin subir. Se intentarán sincronizar antes de salir. ¿Continuar?`
+                );
+                if (!ok) return;
+                const pushed = await pushData();
+                // Si el push falla (p.ej. sin conexión), signOut borraría la BD y se perderían los
+                // pendientes. Confirmamos explícitamente antes de salir para evitar pérdida de datos.
+                if (!pushed) {
+                    const forceOk = window.confirm(
+                        'No se pudieron sincronizar los datos (¿sin conexión?). Si sales ahora se PERDERÁN los registros pendientes. ¿Salir de todas formas?'
+                    );
+                    if (!forceOk) return;
+                }
+                await signOut();
+            } else {
+                const ok = window.confirm('¿Seguro que deseas cerrar sesión?');
+                if (!ok) return;
+                await signOut();
+            }
+            return;
+        }
+
         if (pendingCount > 0) {
             Alert.alert(
                 'Datos sin sincronizar',

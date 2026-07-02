@@ -6,6 +6,7 @@ import com.datatecsolution.eprofe.spring_api.model.Docente;
 import com.datatecsolution.eprofe.spring_api.repository.AsignaturaSeccionRepository;
 import com.datatecsolution.eprofe.spring_api.repository.DocenteRepository;
 import com.datatecsolution.eprofe.spring_api.service.ExcelExportService;
+import com.datatecsolution.eprofe.spring_api.service.ExcelImportService;
 import com.datatecsolution.eprofe.spring_api.service.SaceScraperService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -33,6 +34,9 @@ public class SaceController {
 
     @Autowired
     private SaceScraperService saceScraperService;
+
+    @Autowired
+    private ExcelImportService excelImportService;
 
     @Autowired
     private JwtTokenProvider jwtTokenProvider;
@@ -66,10 +70,13 @@ public class SaceController {
                 }
             }
         } else {
-            // Only create new docente if cookies are provided (SACE sync needed)
-            if (cookies == null || cookies.isBlank()) {
+            // Crear el docente con las credenciales provistas (usuario/contraseña). Antes solo se
+            // creaba si venían cookies (flujo WebView del móvil); ahora también sin cookies para que
+            // la versión WEB pueda onboardear docentes nuevos. La validación real de las credenciales
+            // contra SACE ocurre al sincronizar (POST /sace/sync-server o el flujo de cookies móvil).
+            if (username == null || username.isBlank()) {
                 return ResponseEntity.ok().body(Map.of(
-                    "message", "Docente not found. SACE sync required.",
+                    "message", "Usuario requerido para crear el docente.",
                     "success", false,
                     "needsSaceSync", true
                 ));
@@ -199,6 +206,76 @@ public class SaceController {
                     .body(filledExcel);
 
         } catch (Exception e) {
+            return ResponseEntity.internalServerError()
+                    .body(Map.of("success", false, "message", "Error: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Sincroniza los datos del docente descargándolos directamente de SACE en el servidor
+     * (login + descarga de Excel + parseo), usando las credenciales guardadas del docente.
+     *
+     * Reemplaza, para la versión WEB, el flujo del WebView del móvil: el navegador no puede
+     * hacer el scraping de SACE (CORS/cookies), pero el backend sí. Tras esto, la app baja los
+     * datos ya estructurados con GET /api/sync/initial/{docenteId}.
+     *
+     * El bloque login+descarga se serializa (synchronized) porque SaceScraperService guarda las
+     * cookies/CSRF como estado de instancia (singleton): dos docentes sincronizando a la vez
+     * corromperían la sesión compartida.
+     */
+    @Operation(summary = "Sincronizar datos del docente desde SACE en el servidor (sin WebView)")
+    @PostMapping("/sync-server/{docenteId}")
+    public ResponseEntity<?> syncServer(@PathVariable Long docenteId) {
+        try {
+            Optional<Docente> docenteOpt = docenteRepository.findById(docenteId);
+            if (docenteOpt.isEmpty()) {
+                return ResponseEntity.badRequest()
+                        .body(Map.of("success", false, "message", "Docente no encontrado"));
+            }
+            Docente docente = docenteOpt.get();
+
+            String password = cryptoService.decrypt(docente.getPasswordSace());
+            if (password == null || password.isBlank()) {
+                return ResponseEntity.badRequest()
+                        .body(Map.of("success", false,
+                                "message", "El docente no tiene credenciales SACE guardadas. Inicia sesión con usuario y contraseña primero."));
+            }
+
+            Map<String, byte[]> files;
+            synchronized (saceScraperService) {
+                boolean loggedIn = saceScraperService.login(docente.getUserSace(), password);
+                if (!loggedIn) {
+                    return ResponseEntity.status(401)
+                            .body(Map.of("success", false,
+                                    "message", "No se pudo iniciar sesión en el SACE. Verifica las credenciales."));
+                }
+                files = saceScraperService.downloadExcelFiles();
+            }
+
+            if (files.isEmpty()) {
+                return ResponseEntity.ok()
+                        .body(Map.of("success", false,
+                                "message", "No se encontraron archivos para descargar en SACE.",
+                                "downloaded", 0, "processed", 0));
+            }
+
+            int processed = 0;
+            for (Map.Entry<String, byte[]> entry : files.entrySet()) {
+                try {
+                    excelImportService.processAndStoreExcelFile(entry.getValue(), docente);
+                    processed++;
+                } catch (Exception e) {
+                    System.err.println("Error procesando " + entry.getKey() + ": " + e.getMessage());
+                }
+            }
+
+            return ResponseEntity.ok()
+                    .body(Map.of("success", true,
+                            "message", "Sincronización desde SACE completada",
+                            "downloaded", files.size(), "processed", processed));
+
+        } catch (Exception e) {
+            e.printStackTrace();
             return ResponseEntity.internalServerError()
                     .body(Map.of("success", false, "message", "Error: " + e.getMessage()));
         }

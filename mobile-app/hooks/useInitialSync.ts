@@ -1,3 +1,4 @@
+import { Platform } from 'react-native';
 import { Q } from '@nozbe/watermelondb';
 import { database } from '../model/index';
 import api from '../services/api';
@@ -15,6 +16,17 @@ export function useInitialSync() {
                 });
                 data = response.data;
             } else {
+                // En WEB el navegador no puede hacer el scraping de SACE (CORS/cookies), así que
+                // se lo pedimos al backend: descarga de SACE server-side y puebla su BD. Luego
+                // bajamos el dataset ya estructurado. Si el scrape falla, seguimos con lo que el
+                // servidor ya tenga (no bloquea el acceso a datos previos).
+                if (Platform.OS === 'web') {
+                    try {
+                        await api.post(`/sace/sync-server/${docenteId}`);
+                    } catch (e) {
+                        console.warn('Server-side SACE sync failed; continuing with existing server data', e);
+                    }
+                }
                 // Direct sync: pull already-processed data from backend
                 const response = await api.get(`/sync/initial/${docenteId}`);
                 data = response.data;
@@ -176,7 +188,9 @@ export function useInitialSync() {
                     }));
                 });
 
-                await database.batch(...batchOperations);
+                // Pasar el array directo (no spread) evita "Maximum callstack exceeded" con
+                // datasets grandes y la advertencia de rendimiento de WatermelonDB.
+                await database.batch(batchOperations);
             });
             console.log('Pull Sync Completed');
             return true;
@@ -232,7 +246,7 @@ export function useInitialSync() {
                     ...acumulativos.map(a => a.prepareUpdate((rec: any) => { rec.uploaded = true; })),
                     ...notas.map(n => n.prepareUpdate((rec: any) => { rec.uploaded = true; }))
                 ];
-                await database.batch(...batch);
+                await database.batch(batch);
             });
 
             console.log('Push Sync Completed');
@@ -273,7 +287,7 @@ export function useInitialSync() {
             if (ops.length === 0) return { pruned: 0 };
 
             await database.write(async () => {
-                await database.batch(...ops);
+                await database.batch(ops);
             });
             console.log(`reconcileActiveData: podadas ${staleAsig.length} clases, ${staleSecciones.length} secciones y ${staleMatriculas.length} matrículas de periodos/años no activos`);
             return { pruned: ops.length, clases: staleAsig.length };
